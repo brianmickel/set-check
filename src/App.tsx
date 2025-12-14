@@ -24,11 +24,13 @@ function App() {
     <>
       <h1>Set Check</h1>
       <p>UNDER CONSTRUCTION</p>
-      {cards.map((c) => (
-        <div>
-          <button>{c}</button>
-        </div>
-      ))}
+      <div style={{ width: "100%", display: "flex", flexWrap: "wrap" }}>
+        {cards.map((c) => (
+          <div style={{ padding: "2px", whiteSpace: "nowrap" }}>
+            <button>{c}</button>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
