@@ -74,7 +74,7 @@ function App() {
 
   return (
     <>
-      <h1>Set Check</h1>
+      <h1>Check for a Set</h1>
       <div
         style={{
           display: hasCardsSelected ? "block" : "none",
