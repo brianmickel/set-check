@@ -2,10 +2,6 @@ import { useState } from "react";
 import "./App.css";
 import { MultiSelect } from "./MultiSelect";
 
-// 1,2,3
-// D,S,O
-// G,P,R
-// S,L,E (Solid, Striped, Empty)
 const numbers = ["1", "2", "3"];
 const colors = ["Red", "Green", "Purple"];
 const fills = ["Solid", "Striped", "Empty"];
@@ -57,20 +53,6 @@ const checkSet = (cards: string[]) => {
 function App() {
   const [hasCardsSelected, setHasCardsSelected] = useState(false);
   const [hasSet, setHasSet] = useState(false);
-
-  // const toggleCard = useCallback(
-  //   // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  //   (card: string) => {
-  //     const index = cardsSelected.findIndex((el) => el === card);
-  //     if (index >= 0) {
-  //       cardsSelected.splice(index, 1);
-  //     } else {
-  //       cardsSelected.push(card);
-  //     }
-
-  //   },
-  //   [setHasSet, setHasCardsSelected]
-  // );
 
   return (
     <>
