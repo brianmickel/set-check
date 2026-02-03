@@ -4,6 +4,7 @@ import "./App.css";
 import { MultiSelect } from "./components/MultiSelect";
 import { SetBoard } from "./components/SetBoard";
 import { SetCardSVG } from "./components/SetCardSVG";
+import { SetsFound } from "./components/SetsFound";
 import { ensureSessionToken } from "./api";
 import { ensureJpegOrPassthrough } from "./utils/heic";
 import { resizeImageForAnalyze } from "./utils/imageResize";
@@ -52,17 +53,26 @@ const calculateMatch = (a: string, b: string): string => {
   return partsMatch.join("-");
 };
 
-const checkSet = (cards: string[]): boolean => {
-  if (cards.length < 3) return false;
+/** Return all valid 3-card sets from the given cards (no duplicates). */
+function findAllSets(cards: string[]): string[][] {
+  const sets: string[][] = [];
+  const seen = new Set<string>();
   const available = new Set(cards);
-  for (let a = 0; a < cards.length - 1; a++) {
-    for (let b = a + 1; b < cards.length; b++) {
-      const third = calculateMatch(cards[a], cards[b]);
-      if (available.has(third)) return true;
+  for (let i = 0; i < cards.length - 1; i++) {
+    for (let j = i + 1; j < cards.length; j++) {
+      const third = calculateMatch(cards[i], cards[j]);
+      if (third !== cards[i] && third !== cards[j] && available.has(third)) {
+        const triplet = [cards[i], cards[j], third].sort();
+        const key = triplet.join("|");
+        if (!seen.has(key)) {
+          seen.add(key);
+          sets.push(triplet);
+        }
+      }
     }
   }
-  return false;
-};
+  return sets;
+}
 
 /** Sort by top-left of bbox: y_min then x_min */
 function sortCardsByTopLeft(cards: CardWithBbox[]): CardWithBbox[] {
@@ -76,7 +86,6 @@ function App() {
   const [mode, setMode] = useState<"upload" | "manual" | "visual">("visual");
 
   const [hasCardsSelected, setHasCardsSelected] = useState(false);
-  const [hasSet, setHasSet] = useState(false);
   const [manualSelectedCards, setManualSelectedCards] = useState<string[]>([]);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -97,10 +106,6 @@ function App() {
     () => (cardsFromImage ? sortCardsByTopLeft(cardsFromImage) : []),
     [cardsFromImage]
   );
-  const hasSetFromImage = cardsFromImage
-    ? checkSet(cardsFromImage.map((c) => c.card.replace(/Outlined/g, "Empty")))
-    : null;
-
   useEffect(() => {
     ensureSessionToken().catch(() => {});
   }, []);
@@ -323,7 +328,7 @@ function App() {
 
       {mode === "upload" && (
         <section className="upload-section">
-          <p>Upload a photo of your Set cards.</p>
+          <div>Upload a photo of your Set cards.</div>
           <input
             ref={fileInputRef}
             type="file"
@@ -342,23 +347,23 @@ function App() {
             Upload photo
           </button>
           {uploadError && (
-            <p className="upload-error" role="alert">
+            <div className="upload-error" role="alert">
               {uploadError}
-            </p>
+            </div>
           )}
 
           {previewUrl && (
             <>
               {isPreAnalyze && (
                 <div className="box-instruction">
-                  <p className="box-instruction-main">
+                  <div className="box-instruction-main">
                     Draw a box around each card: click and drag from one corner to the opposite
                     corner. Resize by dragging corners or edges.
-                  </p>
+                  </div>
                   {userDrawnBoxes.length === 0 && (
-                    <p className="box-instruction-nudge">
+                    <div className="box-instruction-nudge">
                       Tip: Drawing boxes around each card before analyzing can improve detection.
-                    </p>
+                    </div>
                   )}
                 </div>
               )}
@@ -482,13 +487,14 @@ function App() {
 
               {cardsFromImage !== null && !analyzing && (
                 <div className="image-result">
-                  <p>
+                  <div>
                     <strong>Cards in image:</strong> {sortedCards.length}
-                  </p>
-                  <p>
-                    <strong>Has Set?</strong>{" "}
-                    {hasSetFromImage === true ? "Yes" : hasSetFromImage === false ? "No" : "—"}
-                  </p>
+                  </div>
+                  <SetsFound
+                    setsFound={findAllSets(
+                      cardsFromImage.map((c) => c.card.replace(/Outlined/g, "Empty"))
+                    )}
+                  />
                   {sortedCards.length > 0 && (
                     <div className="card-list">
                       {sortedCards.map((item, i) => {
@@ -549,15 +555,10 @@ function App() {
       {mode === "visual" && (
         <section className="visual-section">
           <SetBoard cards={manualSelectedCards} boardWidth={3} />
-          <div
-            className="visual-has-set"
-            style={{
-              display: hasCardsSelected ? "block" : "none",
-              visibility: hasCardsSelected ? "visible" : "hidden",
-            }}
-          >
-            <p>Has Set?: {hasSet ? "Yes" : "No"}</p>
-          </div>
+          <SetsFound
+            setsFound={findAllSets(manualSelectedCards)}
+            visible={hasCardsSelected}
+          />
           <p className="visual-instruction">Click or tap cards to select or deselect.</p>
           <div className="set-visual-grid" role="group" aria-label="All Set cards">
             {allCards.map((cardId) => {
@@ -572,7 +573,6 @@ function App() {
                       ? manualSelectedCards.filter((c) => c !== cardId)
                       : [...manualSelectedCards, cardId];
                     setManualSelectedCards(next);
-                    setHasSet(checkSet(next));
                     setHasCardsSelected(next.length > 0);
                   }}
                   aria-pressed={selected}
@@ -593,14 +593,10 @@ function App() {
       {mode === "manual" && (
         <section className="manual-section">
           <SetBoard cards={manualSelectedCards} boardWidth={3} />
-          <div
-            style={{
-              display: hasCardsSelected ? "block" : "none",
-              visibility: hasCardsSelected ? "visible" : "hidden",
-            }}
-          >
-            <p>Has Set?: {hasSet ? "Yes" : "No"}</p>
-          </div>
+          <SetsFound
+            setsFound={findAllSets(manualSelectedCards)}
+            visible={hasCardsSelected}
+          />
           <p>Select the visible cards.</p>
           <MultiSelect
             options={allCards.map((c) => ({
@@ -613,7 +609,6 @@ function App() {
             }))}
             onChange={(cards: string[]) => {
               setManualSelectedCards(cards);
-              setHasSet(checkSet(cards));
               setHasCardsSelected(cards.length > 0);
             }}
           />
