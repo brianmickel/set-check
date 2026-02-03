@@ -1,73 +1,57 @@
-# React + TypeScript + Vite
+# set-check
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Monorepo: frontend (React + Vite) and backend (Node + Express).
 
-Currently, two official plugins are available:
+- **Frontend** is deployed to [GitHub Pages](https://brianmickel.github.io/set-check).
+- **Backend** can be deployed to Railway, Render, Fly.io, etc. See `docs/BACKEND_AND_MONOREPO_PLAN.md`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Structure
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+set-check/
+├── frontend/     # React + Vite app
+├── backend/      # Express API (TypeScript)
+├── docs/         # Plan and notes
+└── package.json  # Root workspaces
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Setup
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+From the repo root:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
+
+This installs dependencies for the root and both workspaces.
+
+## Development
+
+From the repo root:
+
+```bash
+# Frontend (Vite dev server, typically http://localhost:5173)
+npm run dev:frontend
+
+# Backend (Express on http://localhost:3000)
+npm run dev:backend
+```
+
+Run both in separate terminals. The frontend proxies `/api` to the backend in dev, so you can call `fetch('/api/health')` without CORS.
+
+## Build
+
+```bash
+npm run build:frontend   # Output: frontend/dist
+npm run build:backend   # Output: backend/dist
+```
+
+## Deploy
+
+- **Frontend:** Pushing to `main` runs the GitHub Actions workflow and deploys `frontend/dist` to GitHub Pages. The workflow runs `npm ci` and `npm run build:frontend` at the root.
+- **Backend:** Deploy the `backend/` folder to your chosen host. Set `PORT` and optionally `FRONTEND_ORIGIN` (e.g. `https://brianmickel.github.io`). For production, set `VITE_API_URL` to your backend URL when building the frontend so the app calls the deployed API.
+
+## API base URL
+
+- In **development**, the frontend uses relative `/api` (Vite proxy to the local backend).
+- In **production**, set `VITE_API_URL` to your deployed backend URL (e.g. `https://your-api.example.com`) when building the frontend so the built app uses that API. Use the helpers in `frontend/src/api.ts` (`getApiBaseUrl()`, `apiUrl(path)`).
