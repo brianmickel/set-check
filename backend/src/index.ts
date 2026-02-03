@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { apiRouter } from "./routes/api.js";
@@ -11,8 +12,9 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ];
-if (process.env.FRONTEND_ORIGIN) {
-  allowedOrigins.push(process.env.FRONTEND_ORIGIN);
+const frontendOrigin = process.env.FRONTEND_ORIGIN;
+if (frontendOrigin) {
+  allowedOrigins.push(frontendOrigin);
 }
 
 app.use(

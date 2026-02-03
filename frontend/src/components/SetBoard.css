@@ -1,0 +1,24 @@
+.set-board {
+  --set-board-width: 3; /* default; overridden by component */
+  width: fit-content;
+  display: grid;
+  grid-template-columns: repeat(var(--set-board-width), 1fr);
+  gap: 20px;
+  justify-items: center;
+  align-items: start;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 1rem;
+}
+
+.set-board-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
+.set-board-cell img {
+  max-width: 100%;
+  height: auto;
+}

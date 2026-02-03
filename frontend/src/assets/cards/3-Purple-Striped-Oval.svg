@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 60" role="img" aria-label="3 Purple Striped Oval">
+  <defs>
+    <pattern id="s" patternUnits="userSpaceOnUse" width="90" height="1.8">
+    <line x1="0" y1="0" x2="90" y2="0" stroke="#8e24aa" stroke-width="0.9"/>
+    </pattern>
+  </defs>
+  <rect x="1" y="1" width="88" height="58" rx="4" ry="4" fill="#fff8f0" stroke="#e0d8d0" stroke-width="1"/>
+    <path d="M 6.3500000000000005 9 A 7.6499999999999995 11.9 0 0 1 21.65 9 A 7.6499999999999995 11.9 0 0 1 6.3500000000000005 9 Z" fill="url(#s)" stroke="#8e24aa" stroke-width="0.9" transform="translate(2, 21)"/>
+    <path d="M 6.3500000000000005 9 A 7.6499999999999995 11.9 0 0 1 21.65 9 A 7.6499999999999995 11.9 0 0 1 6.3500000000000005 9 Z" fill="url(#s)" stroke="#8e24aa" stroke-width="0.9" transform="translate(31, 21)"/>
+    <path d="M 6.3500000000000005 9 A 7.6499999999999995 11.9 0 0 1 21.65 9 A 7.6499999999999995 11.9 0 0 1 6.3500000000000005 9 Z" fill="url(#s)" stroke="#8e24aa" stroke-width="0.9" transform="translate(60, 21)"/>
+</svg>

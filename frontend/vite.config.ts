@@ -7,8 +7,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      // In dev: proxy /api to Cloudflare Worker (npm run dev:worker → port 8787).
+      // Worker provides session, upload, analyze. For Express backend use port 3000.
       "/api": {
-        target: "http://localhost:3000",
+        target: "http://127.0.0.1:8787",
         changeOrigin: true,
       },
     },

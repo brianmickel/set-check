@@ -1,15 +1,14 @@
 {
   "name": "set-check",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
+  "workspaces": ["frontend", "backend", "worker"],
   "scripts": {
     "dev:frontend": "npm run dev -w set-check-frontend",
     "dev:backend": "npm run dev -w set-check-backend",
+    "dev:worker": "npm run dev -w set-check-worker",
     "build:frontend": "npm run build -w set-check-frontend",
     "build:backend": "npm run build -w set-check-backend",
+    "deploy:worker": "npm run deploy -w set-check-worker",
     "lint:frontend": "npm run lint -w set-check-frontend",
     "lint:backend": "npm run lint -w set-check-backend"
   }
