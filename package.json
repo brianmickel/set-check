@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": ["frontend", "backend", "worker"],
   "scripts": {
+    "sync:frontend-lock": "sh -c 'mv package.json package.json.bak && (mv package-lock.json package-lock.json.bak 2>/dev/null || true); (cd frontend && npm install); code=$?; mv package.json.bak package.json; (mv package-lock.json.bak package-lock.json 2>/dev/null || true); exit $code'",
     "dev:frontend": "npm run dev -w set-check-frontend",
     "dev:backend": "npm run dev -w set-check-backend",
     "dev:worker": "npm run dev -w set-check-worker",
