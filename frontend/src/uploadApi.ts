@@ -4,7 +4,7 @@ import {
   clearStoredSessionToken,
   fetchSessionToken,
   toUserFriendlyError,
-} from "./api.js";
+} from "./api";
 
 export interface UploadResult {
   uploadKey: string;

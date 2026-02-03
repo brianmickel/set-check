@@ -1,5 +1,7 @@
 # set-check
 
+[Partially built with Cursor]
+
 Monorepo: frontend (React + Vite), backend (Node + Express), and API worker (Cloudflare Workers).
 
 - **Frontend** is deployed to [GitHub Pages](https://brianmickel.github.io/set-check).
