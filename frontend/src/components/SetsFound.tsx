@@ -31,7 +31,7 @@ export function SetsFound({ setsFound, visible = true }: SetsFoundProps) {
             className="sets-found-toggle"
             onClick={() => setShowPossibleSets((s) => !s)}
           >
-            {showPossibleSets ? "Hide possible sets" : "Show possible sets"}
+            {showPossibleSets ? "Hide set(s)" : "Show set(s)"}
           </button>
         )}
       </div>
