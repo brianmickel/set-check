@@ -205,6 +205,11 @@
   min-width: 10rem;
 }
 
+/* Reserve space for SetBoard + SetsFound so the card picker doesn’t jump when selecting */
+.board-summary {
+  min-height: 7rem; /* ~one row of set board cards (96px) + a bit for SetsFound */
+}
+
 .visual-section {
   margin-top: 2rem;
 }
@@ -213,6 +218,23 @@
   margin-bottom: 1rem;
   color: #555;
   font-size: 0.95rem;
+}
+
+.clear-cards-wrap {
+  margin-bottom: 1rem;
+}
+
+.clear-cards-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.clear-cards-btn:hover {
+  background: #f5f5f5;
 }
 
 .set-visual-grid {

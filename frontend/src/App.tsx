@@ -554,12 +554,28 @@ function App() {
 
       {mode === "visual" && (
         <section className="visual-section">
-          <SetBoard cards={manualSelectedCards} boardWidth={3} />
-          <SetsFound
+          <div className="board-summary">
+            <SetBoard cards={manualSelectedCards} boardWidth={3} />
+            <SetsFound
             setsFound={findAllSets(manualSelectedCards)}
             visible={hasCardsSelected}
           />
+          </div>
           <p className="visual-instruction">Click or tap cards to select or deselect.</p>
+          {hasCardsSelected && (
+            <div className="clear-cards-wrap">
+              <button
+                type="button"
+                className="clear-cards-btn"
+                onClick={() => {
+                  setManualSelectedCards([]);
+                  setHasCardsSelected(false);
+                }}
+              >
+                Clear selected cards
+              </button>
+            </div>
+          )}
           <div className="set-visual-grid" role="group" aria-label="All Set cards">
             {allCards.map((cardId) => {
               const selected = manualSelectedCards.includes(cardId);
@@ -592,12 +608,28 @@ function App() {
 
       {mode === "manual" && (
         <section className="manual-section">
-          <SetBoard cards={manualSelectedCards} boardWidth={3} />
-          <SetsFound
+          <div className="board-summary">
+            <SetBoard cards={manualSelectedCards} boardWidth={3} />
+            <SetsFound
             setsFound={findAllSets(manualSelectedCards)}
             visible={hasCardsSelected}
           />
+          </div>
           <p>Select the visible cards.</p>
+          {hasCardsSelected && (
+            <div className="clear-cards-wrap">
+              <button
+                type="button"
+                className="clear-cards-btn"
+                onClick={() => {
+                  setManualSelectedCards([]);
+                  setHasCardsSelected(false);
+                }}
+              >
+                Clear selection
+              </button>
+            </div>
+          )}
           <MultiSelect
             options={allCards.map((c) => ({
               label: c.split("-").join(" "),
