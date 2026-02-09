@@ -254,6 +254,12 @@
   background: transparent;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  /* Prevent mobile tap highlight so only the real selected state shows a border */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.set-visual-card img {
+  display: block;
 }
 
 .set-visual-card:hover {
