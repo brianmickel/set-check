@@ -9,6 +9,7 @@ const PORT = Number(process.env.PORT) || 3000;
 const allowedOrigins = [
   "https://brianmickel.github.io",
   "https://www.brianmickel.io",
+  "https://brianmickel.io",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ];
@@ -26,7 +27,7 @@ app.use(
         cb(null, false);
       }
     },
-  })
+  }),
 );
 app.use(express.json());
 
