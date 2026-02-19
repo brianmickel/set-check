@@ -2,6 +2,7 @@ name = "set-check-api"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 
+
 # KV for rate limits and issued upload keys
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
