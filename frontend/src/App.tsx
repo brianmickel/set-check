@@ -139,10 +139,10 @@ function App() {
   }, [imageFile]);
 
   useEffect(() => {
-    if (mode !== "upload" || !imageFile || !previewUrl || cardsFromImage !== null || analyzing)
+    if (mode !== "upload" || !imageFile || !previewUrl || cardsFromImage !== null || analyzing || uploadError !== null)
       return;
     runAnalyze();
-  }, [mode, imageFile, previewUrl, cardsFromImage, analyzing, runAnalyze]);
+  }, [mode, imageFile, previewUrl, cardsFromImage, analyzing, uploadError, runAnalyze]);
 
   const overlayBoxes = cardsFromImage ?? [];
   const showBboxOverlay =
