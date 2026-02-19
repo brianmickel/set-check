@@ -21,6 +21,27 @@ export function apiUrl(path: string): string {
   return p.startsWith("/api") ? p : `/api${p}`;
 }
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * fetch with exponential backoff on 429. Retries up to maxRetries times with
+ * 1s/2s/4s delays (+ jitter). Skips retries if Retry-After > 60s (penalty box).
+ */
+export async function fetchWithBackoff(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  maxRetries = 2,
+): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(input, init);
+    if (res.status !== 429 || attempt === maxRetries) return res;
+    const retryAfterSec = parseInt(res.headers.get("Retry-After") ?? "0", 10);
+    if (retryAfterSec > 60) return res; // penalty box — don't retry, surface the error
+    await sleep(1000 * 2 ** attempt + Math.random() * 500);
+  }
+  return fetch(input, init);
+}
+
 const SESSION_STORAGE_KEY = "set-check-session";
 
 /** Get stored session token or null. */
@@ -53,7 +74,7 @@ export function clearStoredSessionToken(): void {
 /** Fetch a new session token from the API. Call in background on load or before first upload. */
 export async function fetchSessionToken(): Promise<string> {
   const url = apiUrl("session");
-  const res = await fetch(url, {
+  const res = await fetchWithBackoff(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: "{}",

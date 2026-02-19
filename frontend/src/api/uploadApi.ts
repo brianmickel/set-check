@@ -3,6 +3,7 @@ import {
   ensureSessionToken,
   clearStoredSessionToken,
   fetchSessionToken,
+  fetchWithBackoff,
   toUserFriendlyError,
 } from "./api";
 
@@ -35,7 +36,7 @@ export async function uploadImage(file: File): Promise<UploadResult> {
   const formData = new FormData();
   formData.set("file", file);
 
-  let res = await fetch(url, {
+  let res = await fetchWithBackoff(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -47,7 +48,7 @@ export async function uploadImage(file: File): Promise<UploadResult> {
     clearStoredSessionToken();
     try {
       token = await fetchSessionToken();
-      res = await fetch(url, {
+      res = await fetchWithBackoff(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -83,7 +84,7 @@ export async function analyzeImage(uploadKey: string): Promise<AnalyzeResult> {
   }
 
   const url = apiUrl("analyze");
-  let res = await fetch(url, {
+  let res = await fetchWithBackoff(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -96,7 +97,7 @@ export async function analyzeImage(uploadKey: string): Promise<AnalyzeResult> {
     clearStoredSessionToken();
     try {
       token = await fetchSessionToken();
-      res = await fetch(url, {
+      res = await fetchWithBackoff(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -144,7 +145,7 @@ export async function analyzeImageWithBoxes(
   }
 
   const url = apiUrl("analyze");
-  let res = await fetch(url, {
+  let res = await fetchWithBackoff(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -157,7 +158,7 @@ export async function analyzeImageWithBoxes(
     clearStoredSessionToken();
     try {
       token = await fetchSessionToken();
-      res = await fetch(url, {
+      res = await fetchWithBackoff(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
