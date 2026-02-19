@@ -1,7 +1,11 @@
 {
   "name": "set-check",
   "private": true,
-  "workspaces": ["frontend", "backend", "worker"],
+  "workspaces": [
+    "frontend",
+    "backend",
+    "worker"
+  ],
   "scripts": {
     "sync:frontend-lock": "sh -c 'mv package.json package.json.bak && (mv package-lock.json package-lock.json.bak 2>/dev/null || true); (cd frontend && npm install); code=$?; mv package.json.bak package.json; (mv package-lock.json.bak package-lock.json 2>/dev/null || true); exit $code'",
     "dev:frontend": "npm run dev -w set-check-frontend",
@@ -12,5 +16,8 @@
     "deploy:worker": "npm run deploy -w set-check-worker",
     "lint:frontend": "npm run lint -w set-check-frontend",
     "lint:backend": "npm run lint -w set-check-backend"
+  },
+  "devDependencies": {
+    "wrangler": "^4.67.0"
   }
 }
