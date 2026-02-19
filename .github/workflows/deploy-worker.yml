@@ -1,0 +1,50 @@
+# Deploy Cloudflare Worker (API). Requires GitHub secrets: CF_API_TOKEN, CF_ACCOUNT_ID, KV_NAMESPACE_ID.
+# Worker runtime secrets (OPENAI_API_KEY, JWT_SECRET) must be set in Cloudflare, not here.
+name: Deploy Worker
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "worker/**"
+      - ".github/workflows/deploy-worker.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Inject KV namespace id
+        run: |
+          sed -i.bak "s/<SET_CHECK_RATE_LIMIT_KV_ID>/${{ secrets.KV_NAMESPACE_ID }}/g" worker/wrangler.toml
+          if grep -q '<SET_CHECK_RATE_LIMIT_KV_ID>' worker/wrangler.toml; then
+            echo "::error::KV_NAMESPACE_ID secret is not set. Add it in repo Settings → Secrets. See docs/DEPLOY.md"
+            exit 1
+          fi
+
+      - name: Inject ALLOWED_ORIGINS (CORS)
+        env:
+          ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
+        run: |
+          if [ -n "$ALLOWED_ORIGINS" ]; then
+            sed -i.bak "s|ALLOWED_ORIGINS = \"\"|ALLOWED_ORIGINS = \"$ALLOWED_ORIGINS\"|" worker/wrangler.toml
+          fi
+
+      - name: Deploy to Cloudflare Workers
+        run: npm run deploy:worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}

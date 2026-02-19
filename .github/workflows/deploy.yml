@@ -2,11 +2,11 @@
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 # Sets the GITHUB_TOKEN permissions to allow deployment to GitHub Pages
@@ -48,6 +48,9 @@ jobs:
       - name: Build frontend
         run: npm run build
         working-directory: frontend
+        env:
+          # Set in repo Secrets so production build calls your Worker (e.g. https://set-check-api.xxx.workers.dev)
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
       - name: Restore root package files
         run: |
           mv package.json.bak package.json

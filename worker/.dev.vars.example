@@ -1,0 +1,19 @@
+# Copy to .dev.vars and fill in. Used by `wrangler dev` for local secrets.
+# Do not commit .dev.vars.
+
+# Skip rate limits when running locally (avoids 429 during dev)
+LOCAL_DEV=true
+
+# CORS: optional for local dev (default allows localhost:5173). For production set in wrangler.toml [vars].
+# ALLOWED_ORIGINS=https://your-frontend.pages.dev
+
+# Set to false to skip bounding boxes in the analyze prompt and response (cards only)
+# INCLUDE_BOUNDING_BOXES=false
+
+OPENAI_API_KEY=sk-your-openai-api-key
+JWT_SECRET=your-jwt-secret-at-least-32-chars
+
+# Optional: for presigned R2 upload URLs (client PUTs directly to R2)
+# R2_ACCOUNT_ID=your-cloudflare-account-id
+# R2_ACCESS_KEY_ID=your-r2-access-key-id
+# R2_SECRET_ACCESS_KEY=your-r2-secret-access-key

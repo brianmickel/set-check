@@ -98,9 +98,10 @@ The Worker is deployed with Wrangler (no separate build step).
 
 ## Deploy
 
-- **Frontend:** Push to `main` → GitHub Actions deploys `frontend/dist` to GitHub Pages.
-- **Worker:** From root, `npm run deploy:worker` (or `cd worker && npx wrangler deploy`). Set secrets in Cloudflare dashboard or `wrangler secret put`. Set `VITE_API_URL` to your Worker URL when building the frontend for production.
-- **API base URL:** In production, set `VITE_API_URL` to your Worker URL (e.g. `https://set-check-api.<your-subdomain>.workers.dev`) so the app calls the deployed API.
+See **[docs/DEPLOY.md](docs/DEPLOY.md)** for full steps: accounts (GitHub, Cloudflare, OpenAI), environment variables, secrets (no secrets in the repo), and one-time setup.
+
+- **Frontend:** Push to `main` → GitHub Actions deploys to GitHub Pages. Set the `VITE_API_URL` repo secret to your Worker URL so the built app calls your API.
+- **Worker:** Push to `main` runs the Deploy Worker workflow (set `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `KV_NAMESPACE_ID` in repo Secrets). Set `OPENAI_API_KEY` and `JWT_SECRET` in Cloudflare (Dashboard or `wrangler secret put`)—never in the repo.
 
 ## API (Worker)
 

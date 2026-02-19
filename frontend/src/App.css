@@ -72,6 +72,22 @@
 
 .upload-section {
   margin-bottom: 2rem;
+  text-align: center;
+}
+
+.upload-preview-wrap {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.upload-preview-wrap .preview-wrap {
+  margin-top: 0;
+}
+
+.upload-board-summary {
+  margin-top: 1rem;
+  min-height: 7rem;
 }
 
 .file-input {

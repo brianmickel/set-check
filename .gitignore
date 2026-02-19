@@ -16,7 +16,11 @@ dist-ssr
 .env
 .env.*
 !.env.example
+!**/.env.example
 worker/.dev.vars
+**/.dev.vars
+*.env.local
+.env.local.*
 
 # Wrangler local state (dev KV/R2, etc.)
 worker/.wrangler
