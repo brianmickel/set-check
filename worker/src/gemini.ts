@@ -10,17 +10,17 @@ import {
 
 export type { CardWithBbox };
 
-const GEMINI_MODEL = "gemini-2.0-flash";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
 export async function analyzeSetImage(
   imageBase64: string,
   mimeType: string,
   apiKey: string,
-  includeBoundingBoxes = true
+  includeBoundingBoxes = true,
+  model = "gemini-2.0-flash"
 ): Promise<CardWithBbox[]> {
   const prompt = includeBoundingBoxes ? SET_CARDS_PROMPT : SET_CARDS_PROMPT_NO_BBOX;
-  const url = `${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const url = `${GEMINI_BASE_URL}/models/${model}:generateContent?key=${apiKey}`;
 
   const body = {
     contents: [
@@ -45,6 +45,9 @@ export async function analyzeSetImage(
   });
 
   if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error("Gemini quota exceeded — try again later or switch to a different provider.");
+    }
     const errText = await res.text();
     throw new Error(`Gemini API error: ${res.status} ${errText}`);
   }

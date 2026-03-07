@@ -53,6 +53,9 @@ export async function analyzeSetImage(
   });
 
   if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error("Claude quota exceeded — try again later or switch to a different provider.");
+    }
     const errText = await res.text();
     throw new Error(`Anthropic API error: ${res.status} ${errText}`);
   }

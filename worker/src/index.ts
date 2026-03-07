@@ -9,7 +9,16 @@ import { analyzeSetImage as analyzeWithGemini } from "./gemini.js";
 import { analyzeSetImage as analyzeWithClaude } from "./claude.js";
 import type { CardWithBbox, VisionProvider } from "./vision.js";
 
-const VALID_PROVIDERS = new Set<string>(["openai", "gemini", "claude"]);
+const GEMINI_MODELS: Record<string, string> = {
+  "gemini-2.5-pro":        "gemini-2.5-pro",
+  "gemini-2.5-flash":      "gemini-2.5-flash",
+  "gemini":                "gemini-2.0-flash",
+  "gemini-flash-lite":     "gemini-2.0-flash-lite",
+  "gemini-1.5-flash":      "gemini-1.5-flash",
+  "gemini-pro":            "gemini-1.5-pro",
+};
+
+const VALID_PROVIDERS = new Set<string>([...Object.keys(GEMINI_MODELS), "openai", "claude"]);
 
 export interface Env {
   RATE_LIMIT: KVNamespace;
@@ -344,13 +353,13 @@ export default {
       let provider: VisionProvider;
       if (body.provider) {
         if (!VALID_PROVIDERS.has(body.provider)) {
-          return jsonResponse({ error: "Invalid provider. Must be: openai, gemini, or claude." }, 400, cors);
+          return jsonResponse({ error: "Invalid provider." }, 400, cors);
         }
         provider = body.provider as VisionProvider;
         if (provider === "openai" && !isOpenAIConfigured(env)) {
           return jsonResponse({ error: "OpenAI not configured." }, 503, cors);
         }
-        if (provider === "gemini" && !isGeminiConfigured(env)) {
+        if (provider in GEMINI_MODELS && !isGeminiConfigured(env)) {
           return jsonResponse({ error: "Gemini not configured." }, 503, cors);
         }
         if (provider === "claude" && !isClaudeConfigured(env)) {
@@ -405,15 +414,19 @@ export default {
         }
         const base64 = arrayBufferToBase64(bytes);
         const includeBoundingBoxes = env.INCLUDE_BOUNDING_BOXES !== "false";
+        const isGemini = provider in GEMINI_MODELS;
         const apiKey =
-          provider === "gemini" ? env.GEMINI_API_KEY! :
+          isGemini ? env.GEMINI_API_KEY! :
           provider === "claude" ? env.ANTHROPIC_API_KEY! :
           env.OPENAI_API_KEY!;
-        const analyze =
-          provider === "gemini" ? analyzeWithGemini :
-          provider === "claude" ? analyzeWithClaude :
-          analyzeWithOpenAI;
-        cards = await analyze(base64, validation.mime, apiKey, includeBoundingBoxes);
+        if (isGemini) {
+          const geminiModel = GEMINI_MODELS[provider]!;
+          cards = await analyzeWithGemini(base64, validation.mime, apiKey, includeBoundingBoxes, geminiModel);
+        } else if (provider === "claude") {
+          cards = await analyzeWithClaude(base64, validation.mime, apiKey, includeBoundingBoxes);
+        } else {
+          cards = await analyzeWithOpenAI(base64, validation.mime, apiKey, includeBoundingBoxes);
+        }
       } catch (e) {
         await env.UPLOADS.delete(uploadKey).catch(() => {});
         const raw = e instanceof Error ? e.message : String(e);
