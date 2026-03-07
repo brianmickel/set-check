@@ -13,14 +13,13 @@ id = "<SET_CHECK_RATE_LIMIT_KV_ID>"
 binding = "UPLOADS"
 bucket_name = "set-check-uploads"
 
-# Secrets (set via wrangler secret put):
-# OPENAI_API_KEY, JWT_SECRET
-# Optional: TURNSTILE_SECRET_KEY
-# For R2 presigned URLs (S3 API): R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
+# Secrets (set via `npx wrangler secret put <NAME> --name set-check-api`):
+# Required: JWT_SECRET
+# Vision providers — set at least one (auto-priority: Gemini → Claude → OpenAI):
+#   OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY
 # Optional: INCLUDE_BOUNDING_BOXES=false to skip bbox in analyze (cards only)
+# For R2 presigned URLs: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
 
 [vars]
 R2_BUCKET_NAME = "set-check-uploads"
-# Empty = only localhost allowed (dev default). In production this is injected by
-# the deploy workflow from the ALLOWED_ORIGINS GitHub secret (see docs/DEPLOY.md).
-ALLOWED_ORIGINS = ""
+ALLOWED_ORIGINS = "<SET_CHECK_ALLOWED_ORIGINS>"

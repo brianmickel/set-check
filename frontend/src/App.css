@@ -103,6 +103,32 @@
   margin-top: 0.5rem;
 }
 
+.model-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.model-selector-label {
+  color: #666;
+}
+
+.model-selector-select {
+  font-size: 0.85rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.model-selector-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .upload-error {
   color: #c00;
   margin-top: 0.5rem;

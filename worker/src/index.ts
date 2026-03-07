@@ -4,12 +4,16 @@ import { isPenalized, addToPenaltyBox, checkAndIncrement } from "./ratelimit.js"
 import { generateUploadKey, createPresignedPutUrl, UPLOAD_KEY_TTL } from "./presign.js";
 import { MAX_IMAGE_SIZE_ANALYZE } from "./constants.js";
 import { validateImage } from "./image.js";
-import { analyzeSetImage, type CardWithBbox } from "./openai.js";
+import { analyzeSetImage as analyzeWithOpenAI } from "./openai.js";
+import { analyzeSetImage as analyzeWithGemini } from "./gemini.js";
+import { analyzeSetImage as analyzeWithClaude } from "./claude.js";
+import type { CardWithBbox, VisionProvider } from "./vision.js";
+
+const VALID_PROVIDERS = new Set<string>(["openai", "gemini", "claude"]);
 
 export interface Env {
   RATE_LIMIT: KVNamespace;
   UPLOADS: R2Bucket;
-  OPENAI_API_KEY: string;
   JWT_SECRET: string;
   R2_BUCKET_NAME: string;
   R2_ACCOUNT_ID?: string;
@@ -21,6 +25,28 @@ export interface Env {
   INCLUDE_BOUNDING_BOXES?: string;
   /** Comma-separated list of allowed CORS origins (e.g. https://your-app.pages.dev). If unset, only localhost is allowed. */
   ALLOWED_ORIGINS?: string;
+  // Vision providers — set at least one
+  OPENAI_API_KEY?: string;
+  GEMINI_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
+}
+
+function isOpenAIConfigured(env: Env): boolean {
+  return typeof env.OPENAI_API_KEY === "string" && env.OPENAI_API_KEY.startsWith("sk-");
+}
+function isGeminiConfigured(env: Env): boolean {
+  return typeof env.GEMINI_API_KEY === "string" && env.GEMINI_API_KEY.length > 0;
+}
+function isClaudeConfigured(env: Env): boolean {
+  return typeof env.ANTHROPIC_API_KEY === "string" && env.ANTHROPIC_API_KEY.length > 0;
+}
+
+/** Auto-select provider by priority: Gemini → Claude → OpenAI */
+function autoSelectProvider(env: Env): VisionProvider | null {
+  if (isGeminiConfigured(env)) return "gemini";
+  if (isClaudeConfigured(env)) return "claude";
+  if (isOpenAIConfigured(env)) return "openai";
+  return null;
 }
 
 function getClientIp(request: Request): string {
@@ -87,12 +113,13 @@ export default {
     const skipRateLimit = env.LOCAL_DEV === "true";
 
     if (path === "/api/health") {
-      const openaiConfigured =
-        typeof env.OPENAI_API_KEY === "string" &&
-        env.OPENAI_API_KEY.length > 0 &&
-        env.OPENAI_API_KEY.startsWith("sk-");
       return jsonResponse(
-        { status: "ok", openaiConfigured },
+        {
+          status: "ok",
+          openaiConfigured: isOpenAIConfigured(env),
+          geminiConfigured: isGeminiConfigured(env),
+          claudeConfigured: isClaudeConfigured(env),
+        },
         200,
         cors
       );
@@ -279,16 +306,8 @@ export default {
       if (!session) {
         return jsonResponse({ error: "Unauthorized" }, 401, cors);
       }
-      if (
-        !env.OPENAI_API_KEY ||
-        typeof env.OPENAI_API_KEY !== "string" ||
-        !env.OPENAI_API_KEY.startsWith("sk-")
-      ) {
-        return jsonResponse(
-          { error: "Analysis not configured" },
-          503,
-          cors
-        );
+      if (!isOpenAIConfigured(env) && !isGeminiConfigured(env) && !isClaudeConfigured(env)) {
+        return jsonResponse({ error: "Analysis not configured" }, 503, cors);
       }
       if (!skipRateLimit) {
         const penalized = await isPenalized(env.RATE_LIMIT, ip, session.sub);
@@ -317,12 +336,35 @@ export default {
         }
       }
 
-      let body: { uploadKey?: string };
+      let body: { uploadKey?: string; provider?: string };
       try {
-        body = (await request.json()) as { uploadKey?: string };
+        body = (await request.json()) as { uploadKey?: string; provider?: string };
       } catch {
         return jsonResponse({ error: "Invalid JSON" }, 400, cors);
       }
+
+      // Resolve provider
+      let provider: VisionProvider;
+      if (body.provider) {
+        if (!VALID_PROVIDERS.has(body.provider)) {
+          return jsonResponse({ error: "Invalid provider. Must be: openai, gemini, or claude." }, 400, cors);
+        }
+        provider = body.provider as VisionProvider;
+        if (provider === "openai" && !isOpenAIConfigured(env)) {
+          return jsonResponse({ error: "OpenAI not configured." }, 503, cors);
+        }
+        if (provider === "gemini" && !isGeminiConfigured(env)) {
+          return jsonResponse({ error: "Gemini not configured." }, 503, cors);
+        }
+        if (provider === "claude" && !isClaudeConfigured(env)) {
+          return jsonResponse({ error: "Claude not configured." }, 503, cors);
+        }
+      } else {
+        const auto = autoSelectProvider(env);
+        if (!auto) return jsonResponse({ error: "Analysis not configured" }, 503, cors);
+        provider = auto;
+      }
+
       const uploadKey = body.uploadKey;
       if (!uploadKey || typeof uploadKey !== "string") {
         return jsonResponse({ error: "Missing uploadKey" }, 400, cors);
@@ -366,12 +408,15 @@ export default {
         }
         const base64 = arrayBufferToBase64(bytes);
         const includeBoundingBoxes = env.INCLUDE_BOUNDING_BOXES !== "false";
-        cards = await analyzeSetImage(
-          base64,
-          validation.mime,
-          env.OPENAI_API_KEY,
-          includeBoundingBoxes
-        );
+        const apiKey =
+          provider === "gemini" ? env.GEMINI_API_KEY! :
+          provider === "claude" ? env.ANTHROPIC_API_KEY! :
+          env.OPENAI_API_KEY!;
+        const analyze =
+          provider === "gemini" ? analyzeWithGemini :
+          provider === "claude" ? analyzeWithClaude :
+          analyzeWithOpenAI;
+        cards = await analyze(base64, validation.mime, apiKey, includeBoundingBoxes);
       } catch (e) {
         await env.UPLOADS.delete(uploadKey).catch(() => {});
         const raw = e instanceof Error ? e.message : String(e);
@@ -389,7 +434,7 @@ export default {
         return jsonResponse(body, 502, cors);
       }
       await env.UPLOADS.delete(uploadKey);
-      return jsonResponse({ cards }, 200, cors);
+      return jsonResponse({ cards, provider }, 200, cors);
     }
 
     return jsonResponse({ error: "Not Found" }, 404, cors);

@@ -10,7 +10,7 @@ import {
 
 export type { CardWithBbox };
 
-const VISION_MODEL = "gpt-4o";
+const CLAUDE_MODEL = "claude-sonnet-4-6";
 
 export async function analyzeSetImage(
   imageBase64: string,
@@ -19,54 +19,48 @@ export async function analyzeSetImage(
   includeBoundingBoxes = true
 ): Promise<CardWithBbox[]> {
   const prompt = includeBoundingBoxes ? SET_CARDS_PROMPT : SET_CARDS_PROMPT_NO_BBOX;
+
   const body = {
-    model: VISION_MODEL,
+    model: CLAUDE_MODEL,
     max_tokens: 2048,
     messages: [
       {
         role: "user" as const,
         content: [
-          { type: "text" as const, text: prompt },
+          // Image before text — Claude performs better with this ordering
           {
-            type: "image_url" as const,
-            image_url: {
-              url: `data:${mimeType};base64,${imageBase64}`,
-              detail: "high" as const,
+            type: "image" as const,
+            source: {
+              type: "base64" as const,
+              media_type: mimeType as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+              data: imageBase64,
             },
           },
+          { type: "text" as const, text: prompt },
         ],
       },
     ],
   };
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const errText = await res.text();
-    if (res.status === 429) {
-      try {
-        const err = JSON.parse(errText) as { error?: { code?: string } };
-        if (err.error?.code === "insufficient_quota") {
-          throw new Error("Image analysis is temporarily unavailable. Please try again later.");
-        }
-      } catch (e) {
-        if (e instanceof Error && e.message.includes("temporarily unavailable")) throw e;
-      }
-    }
-    throw new Error(`OpenAI API error: ${res.status} ${errText}`);
+    throw new Error(`Anthropic API error: ${res.status} ${errText}`);
   }
 
   const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    content?: Array<{ type: string; text?: string }>;
   };
-  const content = data.choices?.[0]?.message?.content?.trim();
+  const content = data.content?.find((b) => b.type === "text")?.text?.trim();
   if (!content) return [];
 
   if (includeBoundingBoxes) {

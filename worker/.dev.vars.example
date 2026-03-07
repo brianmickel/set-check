@@ -4,13 +4,17 @@
 # Skip rate limits when running locally (avoids 429 during dev)
 LOCAL_DEV=true
 
-# CORS: optional for local dev (default allows localhost:5173). For production set in wrangler.toml [vars].
-# ALLOWED_ORIGINS=https://your-frontend.pages.dev
+# CORS: empty = localhost:5173 only (dev default). Production value is injected by CI from the ALLOWED_ORIGINS secret.
+ALLOWED_ORIGINS=
 
 # Set to false to skip bounding boxes in the analyze prompt and response (cards only)
 # INCLUDE_BOUNDING_BOXES=false
 
+# Vision providers — set at least one. Auto-priority: Gemini → Claude → OpenAI.
 OPENAI_API_KEY=sk-your-openai-api-key
+# GEMINI_API_KEY=your-gemini-api-key
+# ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key
+
 JWT_SECRET=your-jwt-secret-at-least-32-chars
 
 # Optional: for presigned R2 upload URLs (client PUTs directly to R2)

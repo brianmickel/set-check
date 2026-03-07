@@ -4,10 +4,14 @@ import { MultiSelect } from "./components/MultiSelect";
 import { SetBoard } from "./components/SetBoard";
 import { SetCardSVG } from "./components/SetCardSVG";
 import { SetsFound } from "./components/SetsFound";
+import { ModelSelector } from "./components/ModelSelector";
 import { ensureSessionToken } from "./api";
 import { ensureJpegOrPassthrough } from "./utils/heic";
 import { resizeImageForAnalyze } from "./utils/imageResize";
 import { uploadImage, analyzeImage, type CardWithBbox } from "./api";
+import { fetchHealth, getAvailableProviders, type VisionProvider, type ProviderOption } from "./api/health";
+
+const MODEL_STORAGE_KEY = "set-check-model";
 
 const numbers = ["1", "2", "3"];
 const colors = ["Red", "Green", "Purple"];
@@ -84,14 +88,27 @@ function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
+  const [selectedModel, setSelectedModel] = useState<VisionProvider | "auto">(() => {
+    try {
+      return (localStorage.getItem(MODEL_STORAGE_KEY) as VisionProvider | "auto") ?? "auto";
+    } catch {
+      return "auto";
+    }
+  });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sortedCards = useMemo(
     () => (cardsFromImage ? sortCardsByTopLeft(cardsFromImage) : []),
     [cardsFromImage]
   );
+
   useEffect(() => {
     ensureSessionToken().catch(() => {});
+    fetchHealth()
+      .then((h) => setAvailableProviders(getAvailableProviders(h)))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -120,13 +137,19 @@ function App() {
     }
   };
 
+  const handleModelChange = useCallback((value: VisionProvider | "auto") => {
+    setSelectedModel(value);
+    try { localStorage.setItem(MODEL_STORAGE_KEY, value); } catch { /* ignore */ }
+  }, []);
+
   const runAnalyze = useCallback(async () => {
     if (!imageFile) return;
     setUploadError(null);
     setAnalyzing(true);
     try {
+      const provider = selectedModel === "auto" ? undefined : selectedModel;
       const { uploadKey } = await uploadImage(imageFile);
-      const { cards } = await analyzeImage(uploadKey);
+      const { cards } = await analyzeImage(uploadKey, provider);
       setCardsFromImage(cards);
     } catch (err) {
       if (import.meta.env.DEV) console.error("Analyze error:", err);
@@ -136,7 +159,7 @@ function App() {
     } finally {
       setAnalyzing(false);
     }
-  }, [imageFile]);
+  }, [imageFile, selectedModel]);
 
   useEffect(() => {
     if (mode !== "upload" || !imageFile || !previewUrl || cardsFromImage !== null || analyzing || uploadError !== null)
@@ -186,6 +209,12 @@ function App() {
       {mode === "upload" && (
         <section className="upload-section">
           <div>Upload a photo of your Set cards.</div>
+          <ModelSelector
+            providers={availableProviders}
+            selected={selectedModel}
+            onChange={handleModelChange}
+            disabled={analyzing}
+          />
           <input
             ref={fileInputRef}
             type="file"

@@ -6,6 +6,7 @@ import {
   fetchWithBackoff,
   toUserFriendlyError,
 } from "./api";
+import type { VisionProvider } from "./health";
 
 export interface UploadResult {
   uploadKey: string;
@@ -72,7 +73,7 @@ export async function uploadImage(file: File): Promise<UploadResult> {
 }
 
 /** Analyze uploaded image by uploadKey. Returns list of Set card strings. */
-export async function analyzeImage(uploadKey: string): Promise<AnalyzeResult> {
+export async function analyzeImage(uploadKey: string, provider?: VisionProvider): Promise<AnalyzeResult> {
   let token: string;
   try {
     token = await ensureSessionToken();
@@ -90,7 +91,7 @@ export async function analyzeImage(uploadKey: string): Promise<AnalyzeResult> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ uploadKey }),
+    body: JSON.stringify({ uploadKey, ...(provider && { provider }) }),
   });
 
   if (res.status === 401) {
@@ -103,7 +104,7 @@ export async function analyzeImage(uploadKey: string): Promise<AnalyzeResult> {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ uploadKey }),
+        body: JSON.stringify({ uploadKey, ...(provider && { provider }) }),
       });
     } catch {
       throw new Error(toUserFriendlyError(401));
@@ -132,7 +133,8 @@ export async function analyzeImage(uploadKey: string): Promise<AnalyzeResult> {
 /** Re-analyze image with user-supplied bounding boxes; returns one card per box in same order. */
 export async function analyzeImageWithBoxes(
   uploadKey: string,
-  boundingBoxes: [number, number, number, number][]
+  boundingBoxes: [number, number, number, number][],
+  provider?: VisionProvider,
 ): Promise<AnalyzeResult> {
   let token: string;
   try {
@@ -151,7 +153,7 @@ export async function analyzeImageWithBoxes(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ uploadKey, boundingBoxes }),
+    body: JSON.stringify({ uploadKey, boundingBoxes, ...(provider && { provider }) }),
   });
 
   if (res.status === 401) {
@@ -164,7 +166,7 @@ export async function analyzeImageWithBoxes(
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ uploadKey, boundingBoxes }),
+        body: JSON.stringify({ uploadKey, boundingBoxes, ...(provider && { provider }) }),
       });
     } catch {
       throw new Error(toUserFriendlyError(401));
