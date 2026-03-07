@@ -325,13 +325,10 @@ export default {
           session.sub
         );
         if (!result.allowed) {
-          if (result.shouldPenalize) {
-            await addToPenaltyBox(env.RATE_LIMIT, ip, session.sub);
-          }
           return jsonResponse(
             { error: "Too many requests" },
             429,
-            { ...cors, "Retry-After": "900" }
+            { ...cors, "Retry-After": "60" }
           );
         }
       }

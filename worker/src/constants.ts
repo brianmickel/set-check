@@ -33,5 +33,5 @@ export const JWT_TTL_HOURS = 24;
 export const LIMITS = {
   session: { ipPerMin: 20, ipPerDay: 200 },
   "presign-upload": { ipPerMin: 10, ipPerDay: 100, sessionPerMin: 5, sessionPerDay: 50 },
-  analyze: { ipPerMin: 3, ipPerDay: 30, sessionPerMin: 3, sessionPerDay: 30 },
+  analyze: { ipPerMin: 10, ipPerDay: 100, sessionPerMin: 10, sessionPerDay: 50 },
 } as const;

@@ -36,7 +36,7 @@ export async function fetchWithBackoff(
     const res = await fetch(input, init);
     if (res.status !== 429 || attempt === maxRetries) return res;
     const retryAfterSec = parseInt(res.headers.get("Retry-After") ?? "0", 10);
-    if (retryAfterSec > 60) return res; // penalty box — don't retry, surface the error
+    if (retryAfterSec > 10) return res; // long cooldown — surface the error rather than block the thread
     await sleep(1000 * 2 ** attempt + Math.random() * 500);
   }
   return fetch(input, init);
