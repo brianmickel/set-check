@@ -209,12 +209,6 @@ function App() {
       {mode === "upload" && (
         <section className="upload-section">
           <div>Upload a photo of your Set cards.</div>
-          <ModelSelector
-            providers={availableProviders}
-            selected={selectedModel}
-            onChange={handleModelChange}
-            disabled={analyzing}
-          />
           <input
             ref={fileInputRef}
             type="file"
@@ -232,6 +226,12 @@ function App() {
           >
             Upload photo
           </button>
+          <ModelSelector
+            providers={availableProviders}
+            selected={selectedModel}
+            onChange={handleModelChange}
+            disabled={analyzing}
+          />
           {uploadError && (
             <div className="upload-error" role="alert">
               {uploadError}

@@ -74,12 +74,18 @@ export function parseCardsOnlyFromContent(content: string): string[] {
     const arr = JSON.parse(jsonMatch[0]) as unknown;
     if (!Array.isArray(arr)) return [];
     const out: string[] = [];
+    const seen = new Set<string>();
     for (const item of arr) {
+      let card: string | undefined;
       if (typeof item === "string" && VALID_CARDS.has(item)) {
-        out.push(item);
+        card = item;
       } else if (item && typeof item === "object" && "card" in item) {
-        const card = (item as { card: unknown }).card;
-        if (typeof card === "string" && VALID_CARDS.has(card)) out.push(card);
+        const c = (item as { card: unknown }).card;
+        if (typeof c === "string" && VALID_CARDS.has(c)) card = c;
+      }
+      if (card && !seen.has(card)) {
+        seen.add(card);
+        out.push(card);
       }
     }
     return out;
@@ -95,6 +101,7 @@ export function parseCardsWithBboxFromContent(content: string): CardWithBbox[] {
     const arr = JSON.parse(jsonMatch[0]) as unknown;
     if (!Array.isArray(arr)) return [];
     const out: CardWithBbox[] = [];
+    const seen = new Set<string>();
     for (const item of arr) {
       if (
         item &&
@@ -104,10 +111,13 @@ export function parseCardsWithBboxFromContent(content: string): CardWithBbox[] {
         "bbox" in item &&
         Array.isArray((item as { bbox: unknown }).bbox)
       ) {
+        const card = (item as { card: string }).card;
+        if (seen.has(card)) continue;
         const raw = (item as { bbox: unknown[] }).bbox;
         if (raw.length >= 4 && raw.every((n) => typeof n === "number" && n >= 0 && n <= 1)) {
           const [x, y, a, b] = raw as number[];
-          out.push({ card: (item as { card: string }).card, bbox: normalizeBbox(x, y, a, b) });
+          seen.add(card);
+          out.push({ card, bbox: normalizeBbox(x, y, a, b) });
         }
       }
     }
