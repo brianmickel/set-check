@@ -10,12 +10,7 @@ import { analyzeSetImage as analyzeWithClaude } from "./claude.js";
 import type { CardWithBbox, VisionProvider } from "./vision.js";
 
 const GEMINI_MODELS: Record<string, string> = {
-  "gemini-2.5-pro":        "gemini-2.5-pro",
-  "gemini-2.5-flash":      "gemini-2.5-flash",
-  "gemini":                "gemini-2.0-flash",
-  "gemini-flash-lite":     "gemini-2.0-flash-lite",
-  "gemini-1.5-flash":      "gemini-1.5-flash",
-  "gemini-pro":            "gemini-1.5-pro",
+  "gemini": "gemini-2.0-flash",
 };
 
 const VALID_PROVIDERS = new Set<string>([...Object.keys(GEMINI_MODELS), "openai", "claude"]);
@@ -30,6 +25,8 @@ export interface Env {
   R2_SECRET_ACCESS_KEY?: string;
   /** Set to "true" in .dev.vars to skip rate limits when running locally */
   LOCAL_DEV?: string;
+  /** Comma-separated list of IPs that bypass rate limiting (e.g. your home IP). */
+  ALLOWLISTED_IPS?: string;
   /** Set to "false" to omit bounding boxes from the prompt and response (cards only). Default true. */
   INCLUDE_BOUNDING_BOXES?: string;
   /** Comma-separated list of allowed CORS origins (e.g. https://your-app.pages.dev). If unset, only localhost is allowed. */
@@ -119,7 +116,10 @@ export default {
     }
 
     const ip = getClientIp(request);
-    const skipRateLimit = env.LOCAL_DEV === "true";
+    const allowlistedIps = env.ALLOWLISTED_IPS
+      ? new Set(env.ALLOWLISTED_IPS.split(",").map((s) => s.trim()).filter(Boolean))
+      : new Set<string>();
+    const skipRateLimit = env.LOCAL_DEV === "true" || allowlistedIps.has(ip);
 
     if (path === "/api/health") {
       return jsonResponse(

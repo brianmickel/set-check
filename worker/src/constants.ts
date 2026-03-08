@@ -31,7 +31,7 @@ export const JWT_TTL_HOURS = 24;
 
 // Rate limits: per IP (per min), per IP (per day), per session (per min), per session (per day)
 export const LIMITS = {
-  session: { ipPerMin: 20, ipPerDay: 200 },
-  "presign-upload": { ipPerMin: 10, ipPerDay: 100, sessionPerMin: 5, sessionPerDay: 50 },
-  analyze: { ipPerMin: 10, ipPerDay: 100, sessionPerMin: 10, sessionPerDay: 50 },
+  session: { ipPerMin: 60, ipPerDay: 600 },
+  "presign-upload": { ipPerMin: 30, ipPerDay: 300, sessionPerMin: 20, sessionPerDay: 200 },
+  analyze: { ipPerMin: 30, ipPerDay: 200, sessionPerMin: 30, sessionPerDay: 200 },
 } as const;

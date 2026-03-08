@@ -4,6 +4,10 @@
 # Skip rate limits when running locally (avoids 429 during dev)
 LOCAL_DEV=true
 
+# Comma-separated IPs that bypass rate limiting in production (e.g. your home IP).
+# Set via: npx wrangler secret put ALLOWLISTED_IPS --name set-check-api
+# ALLOWLISTED_IPS=1.2.3.4,5.6.7.8
+
 # CORS: empty = localhost:5173 only (dev default). Production value is injected by CI from the ALLOWED_ORIGINS secret.
 ALLOWED_ORIGINS=
 

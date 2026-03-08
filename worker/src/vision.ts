@@ -1,6 +1,6 @@
 import { VALID_CARDS } from "./constants.js";
 
-export type VisionProvider = "openai" | "gemini" | "gemini-flash-lite" | "gemini-1.5-flash" | "gemini-pro" | "gemini-2.5-flash" | "gemini-2.5-pro" | "claude";
+export type VisionProvider = "openai" | "gemini" | "claude";
 
 export interface CardWithBbox {
   card: string;
