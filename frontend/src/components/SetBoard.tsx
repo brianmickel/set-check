@@ -14,6 +14,8 @@ interface SetBoardProps {
   cardWidth?: number;
   /** When set, each card is clickable and this is called with the card index */
   onCardClick?: (index: number) => void;
+  /** When set, show an "Add card" tile at the end that calls this when clicked */
+  onAddCard?: () => void;
 }
 
 export function SetBoard({
@@ -21,15 +23,30 @@ export function SetBoard({
   boardWidth,
   cardWidth = 144,
   onCardClick,
+  onAddCard,
 }: SetBoardProps) {
-  if (cards.length === 0) return null;
+  if (cards.length === 0 && !onAddCard) return null;
+
+  const addCardCell =
+    onAddCard && (
+      <button
+        key="add-card"
+        type="button"
+        className="set-board-add-cell"
+        onClick={onAddCard}
+        aria-label="Add card"
+      >
+        <span className="set-board-add-icon">+</span>
+        <span className="set-board-add-label">Add card</span>
+      </button>
+    );
 
   return (
     <div
       className="set-board"
       style={{ "--set-board-width": boardWidth } as React.CSSProperties}
       role="img"
-      aria-label={`Board with ${cards.length} cards`}
+      aria-label={addCardCell ? `Board with ${cards.length} cards and add card` : `Board with ${cards.length} cards`}
     >
       {cards.map((cardId, i) => {
         const content = (
@@ -58,6 +75,7 @@ export function SetBoard({
           </div>
         );
       })}
+      {addCardCell}
     </div>
   );
 }

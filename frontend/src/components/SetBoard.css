@@ -41,3 +41,43 @@
   outline: 2px solid rgba(0, 120, 200, 0.8);
   outline-offset: 2px;
 }
+
+.set-board-add-cell {
+  min-width: 0;
+  width: 100%;
+  aspect-ratio: 90 / 60;
+  padding: 0;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  background: #fafafa;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  font: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  box-sizing: border-box;
+}
+
+.set-board-add-cell:hover {
+  border-color: #999;
+  background: #f0f0f0;
+}
+
+.set-board-add-cell:focus-visible {
+  outline: 2px solid rgba(0, 120, 200, 0.8);
+  outline-offset: 2px;
+}
+
+.set-board-add-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #999;
+}
+
+.set-board-add-label {
+  font-size: 0.65rem;
+  color: #999;
+}

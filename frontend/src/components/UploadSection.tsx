@@ -4,7 +4,7 @@ import { ImageGallery } from "./ImageGallery";
 import { ImagePreview } from "./ImagePreview";
 import { SetBoard } from "./SetBoard";
 import { SetsFound } from "./SetsFound";
-import { CardEditModal } from "./CardEditModal";
+import { CardEditModal, DEFAULT_CARD } from "./CardEditModal";
 import { findAllSets } from "../utils/setLogic";
 import type { CardWithBbox, GalleryItem } from "../api";
 import type { VisionProvider, ProviderOption } from "../api/health";
@@ -33,6 +33,11 @@ interface Props {
   handleCardClick: (index: number) => void;
   handleUpdateCard: (index: number, newCard: string) => void;
   handleCloseEditModal: () => void;
+  handleDeleteCard: () => void;
+  isAddCardModalOpen: boolean;
+  handleOpenAddCard: () => void;
+  handleCloseAddCardModal: () => void;
+  handleAddCard: (newCard: string) => void;
   // from App
   providers: ProviderOption[];
   selectedModel: VisionProvider | "auto";
@@ -61,6 +66,11 @@ export function UploadSection({
   handleCardClick,
   handleUpdateCard,
   handleCloseEditModal,
+  handleDeleteCard,
+  isAddCardModalOpen,
+  handleOpenAddCard,
+  handleCloseAddCardModal,
+  handleAddCard,
   providers,
   selectedModel,
   onModelChange,
@@ -68,12 +78,24 @@ export function UploadSection({
 }: Props) {
   return (
     <section className="upload-section">
+      {isAddCardModalOpen && (
+        <CardEditModal
+          isOpen
+          mode="create"
+          currentCard={DEFAULT_CARD}
+          onClose={handleCloseAddCardModal}
+          onCreate={handleAddCard}
+          existingCards={sortedCards.map((c) => c.card.replace(/Outlined/g, "Empty"))}
+        />
+      )}
       {editingCard != null && editingCardIndex != null && (
         <CardEditModal
           isOpen
+          mode="edit"
           currentCard={editingCard.card.replace(/Outlined/g, "Empty")}
           onClose={handleCloseEditModal}
           onUpdate={(newCard) => handleUpdateCard(editingCardIndex, newCard)}
+          onDelete={handleDeleteCard}
         />
       )}
       {cardsFromImage !== null && !analyzing && (
@@ -82,6 +104,7 @@ export function UploadSection({
             cards={sortedCards.map((c) => c.card.replace(/Outlined/g, "Empty"))}
             boardWidth={3}
             onCardClick={handleCardClick}
+            onAddCard={handleOpenAddCard}
           />
           <SetsFound
             setsFound={findAllSets(cardsFromImage.map((c) => c.card.replace(/Outlined/g, "Empty")))}

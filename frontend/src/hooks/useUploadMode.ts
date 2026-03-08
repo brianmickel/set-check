@@ -20,6 +20,7 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
   const [freshBlobUrl, setFreshBlobUrl] = useState<string | null>(null);
   const [cardsFromImage, setCardsFromImage] = useState<CardWithBbox[] | null>(null);
   const [editingCardIndex, setEditingCardIndex] = useState<number | null>(null);
+  const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -133,6 +134,7 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
       const { cards } = await analyzeImage(selectedUploadKey, provider);
       setCardsFromImage(cards);
       setEditingCardIndex(null);
+      setIsAddCardModalOpen(false);
     } catch (err) {
       if (import.meta.env.DEV) console.error("Analyze error:", err);
       setUploadError(
@@ -155,7 +157,36 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
   );
 
   const handleCardClick = useCallback((index: number) => {
+    setIsAddCardModalOpen(false);
     setEditingCardIndex(index);
+  }, []);
+
+  const handleDeleteCard = useCallback(() => {
+    setCardsFromImage((prev) => {
+      if (!prev || editingCardIndex == null) return prev;
+      const sorted = sortCardsByTopLeft(prev);
+      const target = sorted[editingCardIndex];
+      if (!target) return prev;
+      return prev.filter((c) => c !== target);
+    });
+    setEditingCardIndex(null);
+  }, [editingCardIndex]);
+
+  const handleOpenAddCard = useCallback(() => {
+    setEditingCardIndex(null);
+    setIsAddCardModalOpen(true);
+  }, []);
+
+  const handleCloseAddCardModal = useCallback(() => {
+    setIsAddCardModalOpen(false);
+  }, []);
+
+  const handleAddCard = useCallback((newCard: string) => {
+    setCardsFromImage((prev) => [
+      ...(prev ?? []),
+      { card: newCard, bbox: [1, 1, 0, 0] as [number, number, number, number] },
+    ]);
+    setIsAddCardModalOpen(false);
   }, []);
 
   const handleUpdateCard = useCallback((index: number, newCard: string) => {
@@ -202,5 +233,10 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
     handleCardClick,
     handleUpdateCard,
     handleCloseEditModal,
+    handleDeleteCard,
+    isAddCardModalOpen,
+    handleOpenAddCard,
+    handleCloseAddCardModal,
+    handleAddCard,
   };
 }
