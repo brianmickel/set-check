@@ -5,6 +5,10 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   base: "/set-check/",
   plugins: [react()],
+  test: {
+    globals: false,
+    environment: "node",
+  },
   server: {
     proxy: {
       // In dev: proxy /api to Cloudflare Worker (npm run dev:worker → port 8787).

@@ -6,6 +6,8 @@
   "scripts": {
     "predev": "node scripts/ensure-cards.js",
     "dev": "vite",
+    "test": "vitest",
+    "test:run": "vitest run",
     "build": "tsc -b && vite build",
     "generate-cards": "node scripts/generate-card-svgs.js",
     "prebuild": "npm run generate-cards",
@@ -33,7 +35,8 @@
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^2.1.0"
   },
   "homepage": "http://brianmickel.github.io/set-check"
 }
