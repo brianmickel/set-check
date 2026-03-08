@@ -4,6 +4,8 @@ import { resizeImageForAnalyze } from "../utils/imageResize";
 import {
   uploadImage,
   analyzeImage,
+  confirmAnalysis,
+  invalidateAnalysis,
   listUploads,
   getImageUrl,
   deleteUpload,
@@ -19,8 +21,15 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
   const [selectedUploadKey, setSelectedUploadKey] = useState<string | null>(null);
   const [freshBlobUrl, setFreshBlobUrl] = useState<string | null>(null);
   const [cardsFromImage, setCardsFromImage] = useState<CardWithBbox[] | null>(null);
+  const [lastAnalyzeProvider, setLastAnalyzeProvider] = useState<string | null>(null);
+  const [analysisFromCache, setAnalysisFromCache] = useState(false);
   const [editingCardIndex, setEditingCardIndex] = useState<number | null>(null);
   const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [confirmSuccess, setConfirmSuccess] = useState(false);
+  const [invalidating, setInvalidating] = useState(false);
+  const [invalidateError, setInvalidateError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -128,11 +137,16 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
   const runAnalyze = useCallback(async () => {
     if (!selectedUploadKey) return;
     setUploadError(null);
+    setConfirmError(null);
+    setConfirmSuccess(false);
+    setInvalidateError(null);
     setAnalyzing(true);
     try {
       const provider = selectedModel === "auto" ? undefined : selectedModel;
-      const { cards } = await analyzeImage(selectedUploadKey, provider);
+      const { cards, provider: resolvedProvider, fromCache } = await analyzeImage(selectedUploadKey, provider);
       setCardsFromImage(cards);
+      setLastAnalyzeProvider(resolvedProvider ?? null);
+      setAnalysisFromCache(fromCache === true);
       setEditingCardIndex(null);
       setIsAddCardModalOpen(false);
     } catch (err) {
@@ -144,6 +158,38 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
       setAnalyzing(false);
     }
   }, [selectedUploadKey, selectedModel]);
+
+  const handleConfirmCorrect = useCallback(async () => {
+    if (!selectedUploadKey || !cardsFromImage) return;
+    setConfirmError(null);
+    setConfirmSuccess(false);
+    setConfirming(true);
+    try {
+      const currentCards = sortCardsByTopLeft(cardsFromImage);
+      await confirmAnalysis(selectedUploadKey, currentCards, lastAnalyzeProvider ?? undefined);
+      setConfirmSuccess(true);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error("Confirm error:", err);
+      setConfirmError(err instanceof Error ? err.message : "Could not save — try again.");
+    } finally {
+      setConfirming(false);
+    }
+  }, [selectedUploadKey, cardsFromImage, lastAnalyzeProvider]);
+
+  const handleInvalidateCache = useCallback(async () => {
+    if (!selectedUploadKey) return;
+    setInvalidateError(null);
+    setInvalidating(true);
+    try {
+      await invalidateAnalysis(selectedUploadKey);
+      setAnalysisFromCache(false);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error("Invalidate error:", err);
+      setInvalidateError(err instanceof Error ? err.message : "Could not invalidate — try again.");
+    } finally {
+      setInvalidating(false);
+    }
+  }, [selectedUploadKey]);
 
   const sortedCards = useMemo(
     () => (cardsFromImage ? sortCardsByTopLeft(cardsFromImage) : []),
@@ -238,5 +284,14 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
     handleOpenAddCard,
     handleCloseAddCardModal,
     handleAddCard,
+    lastAnalyzeProvider,
+    analysisFromCache,
+    confirming,
+    confirmError,
+    confirmSuccess,
+    handleConfirmCorrect,
+    invalidating,
+    invalidateError,
+    handleInvalidateCache,
   };
 }

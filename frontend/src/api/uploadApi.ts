@@ -85,6 +85,8 @@ export interface CardWithBbox {
 
 export interface AnalyzeResult {
   cards: CardWithBbox[];
+  provider?: string;
+  fromCache?: boolean;
 }
 
 /** Upload image via POST /api/upload (multipart/form-data). Returns uploadKey. */
@@ -189,11 +191,105 @@ export async function analyzeImage(uploadKey: string, provider?: VisionProvider)
     throw new Error(devMsg);
   }
 
-  const data = (await res.json()) as { cards?: unknown };
+  const data = (await res.json()) as { cards?: unknown; provider?: string; fromCache?: boolean };
   if (!Array.isArray(data.cards)) {
     throw new Error(toUserFriendlyError(500));
   }
-  return { cards: data.cards as CardWithBbox[] };
+  return {
+    cards: data.cards as CardWithBbox[],
+    ...(data.provider != null && { provider: data.provider }),
+    ...(data.fromCache === true && { fromCache: true }),
+  };
+}
+
+/** Invalidate the cached analysis for this upload so the next analyze will call the LLM. */
+export async function invalidateAnalysis(uploadKey: string): Promise<void> {
+  let token: string;
+  try {
+    token = await ensureSessionToken();
+  } catch (e) {
+    const base = toUserFriendlyError(0);
+    throw new Error(
+      import.meta.env.DEV && e instanceof Error ? `${base} [${e.message}]` : base
+    );
+  }
+  const url = apiUrl("analyze/invalidate");
+  let res = await fetchWithBackoff(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ uploadKey }),
+  });
+  if (res.status === 401) {
+    clearStoredSessionToken();
+    try {
+      token = await fetchSessionToken();
+      res = await fetchWithBackoff(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ uploadKey }),
+      });
+    } catch {
+      throw new Error(toUserFriendlyError(401));
+    }
+  }
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    const msg = err.error ?? toUserFriendlyError(res.status);
+    throw new Error(import.meta.env.DEV ? `${msg} (${res.status})` : msg);
+  }
+}
+
+/** Confirm current analysis result as correct; caches it so future analyzes of the same image skip the LLM. */
+export async function confirmAnalysis(
+  uploadKey: string,
+  cards: CardWithBbox[],
+  provider?: string
+): Promise<void> {
+  let token: string;
+  try {
+    token = await ensureSessionToken();
+  } catch (e) {
+    const base = toUserFriendlyError(0);
+    throw new Error(
+      import.meta.env.DEV && e instanceof Error ? `${base} [${e.message}]` : base
+    );
+  }
+  const url = apiUrl("analyze/confirm");
+  let res = await fetchWithBackoff(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ uploadKey, cards, ...(provider != null && { provider }) }),
+  });
+  if (res.status === 401) {
+    clearStoredSessionToken();
+    try {
+      token = await fetchSessionToken();
+      res = await fetchWithBackoff(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ uploadKey, cards, ...(provider != null && { provider }) }),
+      });
+    } catch {
+      throw new Error(toUserFriendlyError(401));
+    }
+  }
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    const msg = err.error ?? toUserFriendlyError(res.status);
+    throw new Error(import.meta.env.DEV ? `${msg} (${res.status})` : msg);
+  }
 }
 
 /** Re-analyze image with user-supplied bounding boxes; returns one card per box in same order. */

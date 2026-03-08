@@ -305,6 +305,87 @@
   margin-top: 0.5rem;
 }
 
+.analysis-cache-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.analysis-cache-hint-with-invalidate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.invalidate-cache-btn {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #999;
+  background: #f5f5f5;
+  color: #333;
+  cursor: pointer;
+}
+
+.invalidate-cache-btn:hover:not(:disabled) {
+  background: #e8e8e8;
+  border-color: #666;
+}
+
+.invalidate-cache-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.confirm-correct-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  justify-content: center;
+}
+
+.confirm-correct-label {
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.confirm-correct-btn {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #078;
+  background: transparent;
+  color: #078;
+  cursor: pointer;
+}
+
+.confirm-correct-btn:hover:not(:disabled) {
+  background: rgba(0, 119, 136, 0.1);
+}
+
+.confirm-correct-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.confirm-success {
+  margin: 0.5rem 0 0.75rem;
+  font-size: 0.9rem;
+  color: #066;
+}
+
+.confirm-error {
+  margin: 0.5rem 0 0.75rem;
+  font-size: 0.9rem;
+  color: #c00;
+}
+
 .box-instruction {
   margin-top: 1rem;
   text-align: left;

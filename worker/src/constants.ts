@@ -30,9 +30,16 @@ export const JWT_TTL_HOURS = 24;
 export const UPLOAD_LIST_TTL = 4 * 60 * 60; // 4 hours (seconds)
 export const MAX_UPLOADS_PER_IP = 10;
 
+/** Analysis cache: bump when prompt or model behavior changes so old entries are ignored. */
+export const ANALYSIS_CACHE_VERSION = "v1";
+/** TTL for confirmed analysis cache entries (seconds). 90 days. */
+export const ANALYSIS_CACHE_TTL = 90 * 24 * 60 * 60;
+
 // Rate limits: per IP (per min), per IP (per day), per session (per min), per session (per day)
 export const LIMITS = {
   session: { ipPerMin: 60, ipPerDay: 600 },
   "presign-upload": { ipPerMin: 30, ipPerDay: 300, sessionPerMin: 20, sessionPerDay: 200 },
   analyze: { ipPerMin: 30, ipPerDay: 200, sessionPerMin: 30, sessionPerDay: 200 },
+  confirm: { ipPerMin: 30, ipPerDay: 200, sessionPerMin: 30, sessionPerDay: 200 },
+  invalidate: { ipPerMin: 30, ipPerDay: 200, sessionPerMin: 30, sessionPerDay: 200 },
 } as const;

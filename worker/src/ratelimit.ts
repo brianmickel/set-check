@@ -65,13 +65,14 @@ export async function checkAndIncrement(
   sessionId: string | null
 ): Promise<{ allowed: boolean; shouldPenalize: boolean }> {
   const cfg = LIMITS[endpoint];
+  const cfgSession = cfg as { sessionPerMin?: number; sessionPerDay?: number };
   const keysToGet: string[] = [
     rateKey("ip", ip, "min"),
     rateKey("ip", ip, "day"),
     rateKey("ip+ep", ip, "min", endpoint),
     rateKey("ip+ep", ip, "day", endpoint),
   ];
-  if (sessionId && (cfg.sessionPerMin != null || cfg.sessionPerDay != null)) {
+  if (sessionId && (cfgSession.sessionPerMin != null || cfgSession.sessionPerDay != null)) {
     keysToGet.push(
       rateKey("session", sessionId, "min"),
       rateKey("session", sessionId, "day")
@@ -84,11 +85,11 @@ export async function checkAndIncrement(
   const ipEpMin = byKey[rateKey("ip+ep", ip, "min", endpoint)] ?? 0;
   const ipEpDay = byKey[rateKey("ip+ep", ip, "day", endpoint)] ?? 0;
   const sessionMin =
-    sessionId && cfg.sessionPerMin != null
+    sessionId && cfgSession.sessionPerMin != null
       ? byKey[rateKey("session", sessionId, "min")] ?? 0
       : 0;
   const sessionDay =
-    sessionId && cfg.sessionPerDay != null
+    sessionId && cfgSession.sessionPerDay != null
       ? byKey[rateKey("session", sessionId, "day")] ?? 0
       : 0;
 
@@ -96,8 +97,8 @@ export async function checkAndIncrement(
   const overIpDay = (cfg as { ipPerDay?: number }).ipPerDay != null && ipDay >= (cfg as { ipPerDay: number }).ipPerDay;
   const overEpMin = (cfg as { ipPerMin?: number }).ipPerMin != null && ipEpMin >= (cfg as { ipPerMin: number }).ipPerMin;
   const overEpDay = (cfg as { ipPerDay?: number }).ipPerDay != null && ipEpDay >= (cfg as { ipPerDay: number }).ipPerDay;
-  const overSessionMin = cfg.sessionPerMin != null && sessionMin >= cfg.sessionPerMin;
-  const overSessionDay = cfg.sessionPerDay != null && sessionDay >= cfg.sessionPerDay;
+  const overSessionMin = cfgSession.sessionPerMin != null && sessionMin >= cfgSession.sessionPerMin;
+  const overSessionDay = cfgSession.sessionPerDay != null && sessionDay >= cfgSession.sessionPerDay;
 
   const overLimit =
     overIpMin || overIpDay || overSessionMin || overSessionDay || overEpMin || overEpDay;
@@ -116,7 +117,7 @@ export async function checkAndIncrement(
       expirationTtl: WINDOW_DAY_SECONDS,
     }),
   ];
-  if (sessionId && (cfg.sessionPerMin != null || cfg.sessionPerDay != null)) {
+  if (sessionId && (cfgSession.sessionPerMin != null || cfgSession.sessionPerDay != null)) {
     puts.push(
       kv.put(rateKey("session", sessionId, "min"), String(sessionMin + 1), {
         expirationTtl: WINDOW_MIN_SECONDS,

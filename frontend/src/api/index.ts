@@ -13,6 +13,8 @@ export {
   uploadImage,
   analyzeImage,
   analyzeImageWithBoxes,
+  confirmAnalysis,
+  invalidateAnalysis,
   listUploads,
   getImageUrl,
   deleteUpload,

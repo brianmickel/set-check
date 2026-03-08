@@ -42,3 +42,11 @@ export function validateImage(
   }
   return { ok: true, mime };
 }
+
+/** SHA-256 hash of buffer, hex-encoded (64 chars). */
+export async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}

@@ -126,3 +126,30 @@ export function parseCardsWithBboxFromContent(content: string): CardWithBbox[] {
     return [];
   }
 }
+
+/**
+ * Validate parsed value as CardWithBbox[] for cache read/write.
+ * Returns the array if valid, null otherwise.
+ */
+export function validateCardsForCache(raw: unknown): CardWithBbox[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const out: CardWithBbox[] = [];
+  for (const item of raw) {
+    if (
+      !item ||
+      typeof item !== "object" ||
+      !("card" in item) ||
+      typeof (item as { card: unknown }).card !== "string" ||
+      !("bbox" in item) ||
+      !Array.isArray((item as { bbox: unknown }).bbox)
+    )
+      return null;
+    const card = (item as { card: string }).card;
+    if (!VALID_CARDS.has(card)) return null;
+    const bbox = (item as { bbox: unknown[] }).bbox;
+    if (bbox.length !== 4 || !bbox.every((n) => typeof n === "number" && n >= 0 && n <= 1))
+      return null;
+    out.push({ card, bbox: bbox as [number, number, number, number] });
+  }
+  return out;
+}

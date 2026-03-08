@@ -2,12 +2,19 @@ import { corsHeaders, getAllowedOrigins, isAllowedOrigin } from "./cors.js";
 import { signSession, verifySession } from "./jwt.js";
 import { isPenalized, addToPenaltyBox, checkAndIncrement } from "./ratelimit.js";
 import { generateUploadKey, createPresignedPutUrl, UPLOAD_KEY_TTL } from "./presign.js";
-import { MAX_IMAGE_SIZE_ANALYZE, UPLOAD_LIST_TTL, MAX_UPLOADS_PER_IP } from "./constants.js";
-import { validateImage } from "./image.js";
+import {
+  MAX_IMAGE_SIZE_ANALYZE,
+  UPLOAD_LIST_TTL,
+  MAX_UPLOADS_PER_IP,
+  ANALYSIS_CACHE_VERSION,
+  ANALYSIS_CACHE_TTL,
+} from "./constants.js";
+import { validateImage, sha256Hex } from "./image.js";
 import { analyzeSetImage as analyzeWithOpenAI } from "./openai.js";
 import { analyzeSetImage as analyzeWithGemini } from "./gemini.js";
 import { analyzeSetImage as analyzeWithClaude } from "./claude.js";
 import type { CardWithBbox, VisionProvider } from "./vision.js";
+import { validateCardsForCache } from "./vision.js";
 
 const GEMINI_MODELS: Record<string, string> = {
   "gemini": "gemini-2.5-flash",
@@ -525,6 +532,28 @@ export default {
             cors
           );
         }
+        const imageHash = await sha256Hex(bytes);
+        const cacheKey = `analyze:correct:${ANALYSIS_CACHE_VERSION}:${imageHash}`;
+        const cached = await env.RATE_LIMIT.get(cacheKey);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached) as { cards?: unknown; provider?: string };
+            const validated = validateCardsForCache(parsed.cards);
+            if (validated) {
+              return jsonResponse(
+                {
+                  cards: validated,
+                  provider: parsed.provider ?? provider,
+                  fromCache: true,
+                },
+                200,
+                cors
+              );
+            }
+          } catch {
+            // invalid cache entry, fall through to LLM
+          }
+        }
         const base64 = arrayBufferToBase64(bytes);
         const includeBoundingBoxes = env.INCLUDE_BOUNDING_BOXES !== "false";
         const isGemini = provider in GEMINI_MODELS;
@@ -556,6 +585,154 @@ export default {
         return jsonResponse(body, 502, cors);
       }
       return jsonResponse({ cards, provider }, 200, cors);
+    }
+
+    if (path === "/api/analyze/confirm" && request.method === "POST") {
+      const token = getBearerToken(request);
+      if (!token) {
+        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+      }
+      const session = await verifySession(token, env.JWT_SECRET);
+      if (!session) {
+        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+      }
+      if (!skipRateLimit) {
+        const penalized = await isPenalized(env.RATE_LIMIT, ip, session.sub);
+        if (penalized) {
+          return jsonResponse(
+            { error: "Too many requests" },
+            429,
+            { ...cors, "Retry-After": "900" }
+          );
+        }
+        const result = await checkAndIncrement(
+          env.RATE_LIMIT,
+          "confirm",
+          ip,
+          session.sub
+        );
+        if (!result.allowed) {
+          return jsonResponse(
+            { error: "Too many requests" },
+            429,
+            { ...cors, "Retry-After": "60" }
+          );
+        }
+      }
+      const contentLength = request.headers.get("Content-Length");
+      if (contentLength && parseInt(contentLength, 10) > 512 * 1024) {
+        return jsonResponse({ error: "Request body too large" }, 413, cors);
+      }
+      let body: { uploadKey?: string; cards?: unknown; provider?: string };
+      try {
+        body = (await request.json()) as { uploadKey?: string; cards?: unknown; provider?: string };
+      } catch {
+        return jsonResponse({ error: "Invalid JSON" }, 400, cors);
+      }
+      const uploadKey = body.uploadKey;
+      if (!uploadKey || typeof uploadKey !== "string") {
+        return jsonResponse({ error: "Missing uploadKey" }, 400, cors);
+      }
+      if (!uploadKey.startsWith("uploads/") || uploadKey.includes("..")) {
+        return jsonResponse({ error: "Invalid uploadKey" }, 400, cors);
+      }
+      const validatedCards = validateCardsForCache(body.cards);
+      if (!validatedCards) {
+        return jsonResponse({ error: "Invalid or missing cards" }, 400, cors);
+      }
+      const ipHash = await hashIp(ip, env.JWT_SECRET);
+      const ownerHash = await env.RATE_LIMIT.get(`upload:owner:${uploadKey}`);
+      if (!ownerHash || ownerHash !== ipHash) {
+        return jsonResponse({ error: "Invalid or expired upload key" }, 400, cors);
+      }
+      const object = await env.UPLOADS.get(uploadKey);
+      if (!object) {
+        return jsonResponse({ error: "Upload not found" }, 404, cors);
+      }
+      let bytes: ArrayBuffer;
+      try {
+        bytes = await object.arrayBuffer();
+      } catch {
+        return jsonResponse({ error: "Failed to read image" }, 500, cors);
+      }
+      const imageHash = await sha256Hex(bytes);
+      const cacheKey = `analyze:correct:${ANALYSIS_CACHE_VERSION}:${imageHash}`;
+      const value = JSON.stringify({
+        cards: validatedCards,
+        provider: body.provider ?? null,
+      });
+      try {
+        await env.RATE_LIMIT.put(cacheKey, value, { expirationTtl: ANALYSIS_CACHE_TTL });
+      } catch {
+        return jsonResponse({ error: "Failed to save" }, 500, cors);
+      }
+      return jsonResponse({ ok: true }, 200, cors);
+    }
+
+    if (path === "/api/analyze/invalidate" && request.method === "POST") {
+      const token = getBearerToken(request);
+      if (!token) {
+        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+      }
+      const session = await verifySession(token, env.JWT_SECRET);
+      if (!session) {
+        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+      }
+      if (!skipRateLimit) {
+        const penalized = await isPenalized(env.RATE_LIMIT, ip, session.sub);
+        if (penalized) {
+          return jsonResponse(
+            { error: "Too many requests" },
+            429,
+            { ...cors, "Retry-After": "900" }
+          );
+        }
+        const result = await checkAndIncrement(
+          env.RATE_LIMIT,
+          "invalidate",
+          ip,
+          session.sub
+        );
+        if (!result.allowed) {
+          return jsonResponse(
+            { error: "Too many requests" },
+            429,
+            { ...cors, "Retry-After": "60" }
+          );
+        }
+      }
+      let body: { uploadKey?: string };
+      try {
+        body = (await request.json()) as { uploadKey?: string };
+      } catch {
+        return jsonResponse({ error: "Invalid JSON" }, 400, cors);
+      }
+      const uploadKey = body.uploadKey;
+      if (!uploadKey || typeof uploadKey !== "string") {
+        return jsonResponse({ error: "Missing uploadKey" }, 400, cors);
+      }
+      if (!uploadKey.startsWith("uploads/") || uploadKey.includes("..")) {
+        return jsonResponse({ error: "Invalid uploadKey" }, 400, cors);
+      }
+      const ipHash = await hashIp(ip, env.JWT_SECRET);
+      const ownerHash = await env.RATE_LIMIT.get(`upload:owner:${uploadKey}`);
+      if (!ownerHash || ownerHash !== ipHash) {
+        return jsonResponse({ error: "Invalid or expired upload key" }, 400, cors);
+      }
+      const object = await env.UPLOADS.get(uploadKey);
+      if (!object) {
+        return jsonResponse({ error: "Upload not found" }, 404, cors);
+      }
+      let bytes: ArrayBuffer;
+      try {
+        bytes = await object.arrayBuffer();
+      } catch {
+        return jsonResponse({ error: "Failed to read image" }, 500, cors);
+      }
+      const imageHash = await sha256Hex(bytes);
+      const cacheKey = `analyze:correct:${ANALYSIS_CACHE_VERSION}:${imageHash}`;
+      await env.RATE_LIMIT.delete(cacheKey);
+      return jsonResponse({ ok: true }, 200, cors);
     }
 
     return jsonResponse({ error: "Not Found" }, 404, cors);
