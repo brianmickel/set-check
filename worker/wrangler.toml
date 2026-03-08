@@ -6,7 +6,7 @@ compatibility_date = "2024-11-01"
 # KV for rate limits and issued upload keys
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "<SET_CHECK_RATE_LIMIT_KV_ID>"
+id = "93ed968fb0994e0297e1cc9a5cd485ed"
 
 # R2 bucket for temporary uploads
 [[r2_buckets]]

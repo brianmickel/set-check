@@ -153,6 +153,9 @@ export default {
 
     const isLocalDev = env.LOCAL_DEV === "true";
     if (!isLocalDev && !isAllowedOrigin(origin, allowedOrigins) && request.method !== "GET" && path !== "/api/health") {
+      if (env.ALLOWED_ORIGINS === "<SET_CHECK_ALLOWED_ORIGINS>") {
+        console.warn("CORS: ALLOWED_ORIGINS is still the placeholder; set it to your frontend origin(s) in production.");
+      }
       return jsonResponse({ error: "Forbidden" }, 403, cors);
     }
 

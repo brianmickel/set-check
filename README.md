@@ -65,7 +65,7 @@ npm run dev:worker
 npm run dev:frontend
 ```
 
-Set Worker secrets for local dev (in `worker/`): either use `wrangler secret put` or copy `worker/.dev.vars.example` to `worker/.dev.vars` and set `OPENAI_API_KEY`, `JWT_SECRET` (and optional R2 keys). Wrangler loads `.dev.vars` in `wrangler dev`.
+Set Worker secrets for local dev (in `worker/`): either use `wrangler secret put` or copy `worker/.dev.vars.example` to `worker/.dev.vars` and set `OPENAI_API_KEY`, `JWT_SECRET` (and optional R2 keys). Wrangler loads `.dev.vars` in `wrangler dev`. For production deploy, set the Worker **var** `ALLOWED_ORIGINS` to your frontend origin (e.g. `https://your-user.github.io`) so CORS allows the deployed app.
 
 Create KV namespace and R2 bucket, then set `wrangler.toml`:
 
@@ -101,7 +101,7 @@ The Worker is deployed with Wrangler (no separate build step).
 See **[docs/DEPLOY.md](docs/DEPLOY.md)** for full steps: accounts (GitHub, Cloudflare, OpenAI), environment variables, secrets (no secrets in the repo), and one-time setup.
 
 - **Frontend:** Push to `main` → GitHub Actions deploys to GitHub Pages. Set the `VITE_API_URL` repo secret to your Worker URL so the built app calls your API.
-- **Worker:** Push to `main` runs the Deploy Worker workflow (set `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `KV_NAMESPACE_ID` in repo Secrets). Set `OPENAI_API_KEY` and `JWT_SECRET` in Cloudflare (Dashboard or `wrangler secret put`)—never in the repo.
+- **Worker:** Push to `main` runs the Deploy Worker workflow (set `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `KV_NAMESPACE_ID` in repo Secrets). Set `OPENAI_API_KEY` and `JWT_SECRET` in Cloudflare (Dashboard or `wrangler secret put`)—never in the repo. **Production:** Set the Worker **var** `ALLOWED_ORIGINS` to your frontend origin(s) (e.g. `https://your-user.github.io`). The default in `wrangler.toml` is a placeholder that only allows localhost; if you leave it, browser requests from your deployed frontend will get 403 Forbidden.
 
 ## API (Worker)
 

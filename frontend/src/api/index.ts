@@ -12,7 +12,6 @@ export {
 export {
   uploadImage,
   analyzeImage,
-  analyzeImageWithBoxes,
   confirmAnalysis,
   invalidateAnalysis,
   listUploads,

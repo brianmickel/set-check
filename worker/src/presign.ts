@@ -1,8 +1,6 @@
 import { AwsClient } from "aws4fetch";
 import { PRESIGN_KEY_TTL_SECONDS } from "./constants.js";
 
-const PRESIGNED_EXPIRES = 120; // seconds
-
 export function generateUploadKey(): string {
   const uuid = crypto.randomUUID();
   return `uploads/${uuid}`;
@@ -21,7 +19,7 @@ export async function createPresignedPutUrl(
     service: "s3",
     region: "auto",
   });
-  const url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${key}?X-Amz-Expires=${PRESIGNED_EXPIRES}`;
+  const url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${key}?X-Amz-Expires=${PRESIGN_KEY_TTL_SECONDS}`;
   const signed = await client.sign(new Request(url, { method: "PUT" }), {
     aws: { signQuery: true },
   });
