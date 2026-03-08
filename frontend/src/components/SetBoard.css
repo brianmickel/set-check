@@ -22,3 +22,22 @@
   max-width: 100%;
   height: auto;
 }
+
+.set-board-cell-btn {
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.set-board-cell-btn:hover {
+  outline: 2px solid rgba(0, 120, 200, 0.5);
+  outline-offset: 2px;
+}
+
+.set-board-cell-btn:focus-visible {
+  outline: 2px solid rgba(0, 120, 200, 0.8);
+  outline-offset: 2px;
+}

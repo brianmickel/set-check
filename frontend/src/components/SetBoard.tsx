@@ -12,12 +12,15 @@ interface SetBoardProps {
   boardWidth: number;
   /** Optional size for each card (CSS width; height scales to card ratio) */
   cardWidth?: number;
+  /** When set, each card is clickable and this is called with the card index */
+  onCardClick?: (index: number) => void;
 }
 
 export function SetBoard({
   cards,
   boardWidth,
   cardWidth = 144,
+  onCardClick,
 }: SetBoardProps) {
   if (cards.length === 0) return null;
 
@@ -28,15 +31,33 @@ export function SetBoard({
       role="img"
       aria-label={`Board with ${cards.length} cards`}
     >
-      {cards.map((cardId) => (
-        <div key={cardId} className="set-board-cell">
+      {cards.map((cardId, i) => {
+        const content = (
           <SetCardSVG
             cardId={cardId}
             width={cardWidth}
             title={cardId.replace(/-/g, " ")}
           />
-        </div>
-      ))}
+        );
+        if (onCardClick) {
+          return (
+            <button
+              key={i}
+              type="button"
+              className="set-board-cell set-board-cell-btn"
+              onClick={() => onCardClick(i)}
+              aria-label={`Edit card ${i + 1}: ${cardId.replace(/-/g, " ")}`}
+            >
+              {content}
+            </button>
+          );
+        }
+        return (
+          <div key={i} className="set-board-cell">
+            {content}
+          </div>
+        );
+      })}
     </div>
   );
 }

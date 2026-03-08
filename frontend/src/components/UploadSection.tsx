@@ -4,6 +4,7 @@ import { ImageGallery } from "./ImageGallery";
 import { ImagePreview } from "./ImagePreview";
 import { SetBoard } from "./SetBoard";
 import { SetsFound } from "./SetsFound";
+import { CardEditModal } from "./CardEditModal";
 import { findAllSets } from "../utils/setLogic";
 import type { CardWithBbox, GalleryItem } from "../api";
 import type { VisionProvider, ProviderOption } from "../api/health";
@@ -27,6 +28,11 @@ interface Props {
   handleGallerySelect: (key: string) => void;
   handleDelete: (key: string) => void;
   runAnalyze: () => void;
+  editingCard: CardWithBbox | null;
+  editingCardIndex: number | null;
+  handleCardClick: (index: number) => void;
+  handleUpdateCard: (index: number, newCard: string) => void;
+  handleCloseEditModal: () => void;
   // from App
   providers: ProviderOption[];
   selectedModel: VisionProvider | "auto";
@@ -50,6 +56,11 @@ export function UploadSection({
   handleGallerySelect,
   handleDelete,
   runAnalyze,
+  editingCard,
+  editingCardIndex,
+  handleCardClick,
+  handleUpdateCard,
+  handleCloseEditModal,
   providers,
   selectedModel,
   onModelChange,
@@ -57,11 +68,20 @@ export function UploadSection({
 }: Props) {
   return (
     <section className="upload-section">
+      {editingCard != null && editingCardIndex != null && (
+        <CardEditModal
+          isOpen
+          currentCard={editingCard.card.replace(/Outlined/g, "Empty")}
+          onClose={handleCloseEditModal}
+          onUpdate={(newCard) => handleUpdateCard(editingCardIndex, newCard)}
+        />
+      )}
       {cardsFromImage !== null && !analyzing && (
         <div className="upload-board-summary">
           <SetBoard
             cards={sortedCards.map((c) => c.card.replace(/Outlined/g, "Empty"))}
             boardWidth={3}
+            onCardClick={handleCardClick}
           />
           <SetsFound
             setsFound={findAllSets(cardsFromImage.map((c) => c.card.replace(/Outlined/g, "Empty")))}

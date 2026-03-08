@@ -1,11 +1,35 @@
 import type { CardWithBbox } from "../api";
 
-const numbers = ["1", "2", "3"];
-const colors = ["Red", "Green", "Purple"];
-const fills = ["Solid", "Striped", "Empty"];
-const shapes = ["Diamond", "Oval", "Squiggle"];
+export const numbers = ["1", "2", "3"];
+export const colors = ["Red", "Green", "Purple"];
+export const fills = ["Solid", "Striped", "Empty"];
+export const shapes = ["Diamond", "Oval", "Squiggle"];
 
 const characteristics = [numbers, colors, fills, shapes];
+
+export interface CardParts {
+  number: string;
+  color: string;
+  fill: string;
+  shape: string;
+}
+
+/** Parse card string to parts. Normalizes Outlined → Empty. Returns fallbacks for invalid strings. */
+export function parseCard(card: string): CardParts {
+  const normalized = card.replace(/Outlined/g, "Empty");
+  const parts = normalized.split("-");
+  return {
+    number: numbers.includes(parts[0]) ? parts[0]! : numbers[0]!,
+    color: colors.includes(parts[1]) ? parts[1]! : colors[0]!,
+    fill: fills.includes(parts[2]) ? parts[2]! : fills[0]!,
+    shape: shapes.includes(parts[3]) ? parts[3]! : shapes[0]!,
+  };
+}
+
+/** Build card string from parts. Uses frontend convention (Empty, not Outlined). */
+export function buildCard(parts: CardParts): string {
+  return `${parts.number}-${parts.color}-${parts.fill}-${parts.shape}`;
+}
 
 export const allCards: string[] = [];
 for (const a of numbers) {

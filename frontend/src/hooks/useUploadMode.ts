@@ -19,6 +19,7 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
   const [selectedUploadKey, setSelectedUploadKey] = useState<string | null>(null);
   const [freshBlobUrl, setFreshBlobUrl] = useState<string | null>(null);
   const [cardsFromImage, setCardsFromImage] = useState<CardWithBbox[] | null>(null);
+  const [editingCardIndex, setEditingCardIndex] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -131,6 +132,7 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
       const provider = selectedModel === "auto" ? undefined : selectedModel;
       const { cards } = await analyzeImage(selectedUploadKey, provider);
       setCardsFromImage(cards);
+      setEditingCardIndex(null);
     } catch (err) {
       if (import.meta.env.DEV) console.error("Analyze error:", err);
       setUploadError(
@@ -145,6 +147,31 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
     () => (cardsFromImage ? sortCardsByTopLeft(cardsFromImage) : []),
     [cardsFromImage]
   );
+
+  const editingCard = useMemo(
+    () =>
+      editingCardIndex != null ? sortedCards[editingCardIndex] ?? null : null,
+    [editingCardIndex, sortedCards]
+  );
+
+  const handleCardClick = useCallback((index: number) => {
+    setEditingCardIndex(index);
+  }, []);
+
+  const handleUpdateCard = useCallback((index: number, newCard: string) => {
+    setCardsFromImage((prev) => {
+      if (!prev) return prev;
+      const sorted = sortCardsByTopLeft(prev);
+      const target = sorted[index];
+      if (!target) return prev;
+      return prev.map((c) => (c === target ? { ...c, card: newCard } : c));
+    });
+    setEditingCardIndex(null);
+  }, []);
+
+  const handleCloseEditModal = useCallback(() => {
+    setEditingCardIndex(null);
+  }, []);
 
   const busy = uploading || analyzing;
   const previewSrc = freshBlobUrl ?? (selectedUploadKey ? getImageUrl(selectedUploadKey) : null);
@@ -170,5 +197,10 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
     handleGallerySelect,
     handleDelete,
     runAnalyze,
+    editingCard,
+    editingCardIndex,
+    handleCardClick,
+    handleUpdateCard,
+    handleCloseEditModal,
   };
 }
