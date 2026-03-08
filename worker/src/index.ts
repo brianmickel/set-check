@@ -10,7 +10,7 @@ import { analyzeSetImage as analyzeWithClaude } from "./claude.js";
 import type { CardWithBbox, VisionProvider } from "./vision.js";
 
 const GEMINI_MODELS: Record<string, string> = {
-  "gemini": "gemini-2.0-flash",
+  "gemini": "gemini-2.5-flash",
 };
 
 const VALID_PROVIDERS = new Set<string>([...Object.keys(GEMINI_MODELS), "openai", "claude"]);

@@ -16,7 +16,7 @@ export interface ProviderOption {
 
 export const PROVIDER_LABELS: Record<VisionProvider, string> = {
   openai: "OpenAI GPT-4o",
-  gemini: "Gemini 2.0 Flash",
+  gemini: "Gemini 2.5 Flash",
   claude: "Claude Sonnet 4.6",
 };
 
