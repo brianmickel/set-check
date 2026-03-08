@@ -11,9 +11,10 @@ export function ModelSelector({ providers, selected, onChange, disabled }: Props
   if (providers.length === 0) return null;
 
   return (
-    <label className="model-selector">
+    <label className="model-selector" htmlFor="set-check-model-select">
       <span className="model-selector-label">Model</span>
       <select
+        id="set-check-model-select"
         value={selected}
         onChange={(e) => onChange(e.target.value as VisionProvider | "auto")}
         disabled={disabled}

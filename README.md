@@ -105,9 +105,15 @@ See **[docs/DEPLOY.md](docs/DEPLOY.md)** for full steps: accounts (GitHub, Cloud
 
 ## API (Worker)
 
-- `GET /api/health` — ok
-- `POST /api/session` — returns `{ token }` (JWT); frontend calls silently.
-- `POST /api/upload` — `multipart/form-data` with `file` (image). Returns `{ uploadKey }`.
-- `POST /api/analyze` — body `{ uploadKey }`. Returns `{ cards: string[] }`.
+- `GET /api/health` — status and which vision providers are configured (no auth).
+- `POST /api/session` — returns `{ token }` (JWT); frontend calls silently. Rate limited by IP.
+- `POST /api/presign-upload` — returns presigned R2 PUT URL and key (Bearer).
+- `POST /api/upload` — `multipart/form-data` with `file` (image). Returns `{ uploadKey }`. Bearer.
+- `GET /api/uploads` — list current session’s upload keys. Bearer.
+- `GET /api/image?key=...` — serve uploaded image by key (no auth; key is UUID).
+- `DELETE /api/image?key=...` — delete upload by key after ownership check. Bearer.
+- `POST /api/analyze` — body `{ uploadKey }` and optional `{ provider }`. Returns `{ cards }` (and `fromCache` when from cache). Bearer.
+- `POST /api/analyze/confirm` — body `{ uploadKey, cards, provider? }`. Caches result for this image. Bearer.
+- `POST /api/analyze/invalidate` — body `{ uploadKey }`. Clears cached analysis for this image. Bearer.
 
 Session and auth are invisible to the user; errors surface as friendly messages (e.g. “Something went wrong — try again later”).
