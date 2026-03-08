@@ -5,11 +5,24 @@ import { SetBoard } from "./components/SetBoard";
 import { SetCardSVG } from "./components/SetCardSVG";
 import { SetsFound } from "./components/SetsFound";
 import { ModelSelector } from "./components/ModelSelector";
+import { ImageGallery } from "./components/ImageGallery";
 import { ensureSessionToken } from "./api";
 import { ensureJpegOrPassthrough } from "./utils/heic";
 import { resizeImageForAnalyze } from "./utils/imageResize";
-import { uploadImage, analyzeImage, type CardWithBbox } from "./api";
-import { fetchHealth, getAvailableProviders, type VisionProvider, type ProviderOption } from "./api/health";
+import {
+  uploadImage,
+  analyzeImage,
+  listUploads,
+  getImageUrl,
+  type CardWithBbox,
+  type GalleryItem,
+} from "./api";
+import {
+  fetchHealth,
+  getAvailableProviders,
+  type VisionProvider,
+  type ProviderOption,
+} from "./api/health";
 
 const MODEL_STORAGE_KEY = "set-check-model";
 
@@ -82,26 +95,44 @@ function App() {
   const [hasCardsSelected, setHasCardsSelected] = useState(false);
   const [manualSelectedCards, setManualSelectedCards] = useState<string[]>([]);
 
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [cardsFromImage, setCardsFromImage] = useState<CardWithBbox[] | null>(null);
+  // Gallery state
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [selectedUploadKey, setSelectedUploadKey] = useState<string | null>(
+    null,
+  );
+  // Blob URL for a freshly uploaded image (shows immediately before R2 is hit)
+  const [freshBlobUrl, setFreshBlobUrl] = useState<string | null>(null);
+
+  const [cardsFromImage, setCardsFromImage] = useState<CardWithBbox[] | null>(
+    null,
+  );
+  const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
-  const [selectedModel, setSelectedModel] = useState<VisionProvider | "auto">(() => {
-    try {
-      return (localStorage.getItem(MODEL_STORAGE_KEY) as VisionProvider | "auto") ?? "auto";
-    } catch {
-      return "auto";
-    }
-  });
+  const [availableProviders, setAvailableProviders] = useState<
+    ProviderOption[]
+  >([]);
+  const [selectedModel, setSelectedModel] = useState<VisionProvider | "auto">(
+    () => {
+      try {
+        return (
+          (localStorage.getItem(MODEL_STORAGE_KEY) as
+            | VisionProvider
+            | "auto") ?? "auto"
+        );
+      } catch {
+        return "auto";
+      }
+    },
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sortedCards = useMemo(
     () => (cardsFromImage ? sortCardsByTopLeft(cardsFromImage) : []),
-    [cardsFromImage]
+    [cardsFromImage],
   );
 
   useEffect(() => {
@@ -111,11 +142,31 @@ function App() {
       .catch(() => {});
   }, []);
 
+  // Revoke blob URL when it changes
   useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (freshBlobUrl) URL.revokeObjectURL(freshBlobUrl);
     };
-  }, [previewUrl]);
+  }, [freshBlobUrl]);
+
+  // Load gallery when entering upload mode
+  useEffect(() => {
+    if (mode !== "upload") return;
+    setGalleryLoading(true);
+    listUploads()
+      .then((items) => {
+        setGalleryItems(items);
+        // Auto-select most recent if none selected
+        if (items.length > 0 && !selectedUploadKey) {
+          const newest = [...items].sort(
+            (a, b) => b.uploadedAt - a.uploadedAt,
+          )[0];
+          setSelectedUploadKey(newest.key);
+        }
+      })
+      .finally(() => setGalleryLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -123,54 +174,96 @@ function App() {
     e.target.value = "";
     setUploadError(null);
     setCardsFromImage(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
+
+    // Show local preview immediately
+    let processedFile: File;
     try {
       const converted = await ensureJpegOrPassthrough(file);
-      const imageFile = await resizeImageForAnalyze(converted);
-      setImageFile(imageFile);
-      setPreviewUrl(URL.createObjectURL(imageFile));
+      processedFile = await resizeImageForAnalyze(converted);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Invalid image");
+      return;
+    }
+
+    if (freshBlobUrl) URL.revokeObjectURL(freshBlobUrl);
+    setFreshBlobUrl(URL.createObjectURL(processedFile));
+    setSelectedUploadKey(null);
+
+    setUploading(true);
+    try {
+      const { uploadKey } = await uploadImage(processedFile);
+      const newEntry: GalleryItem = {
+        key: uploadKey,
+        uploadedAt: Date.now(),
+        mime: processedFile.type || "image/jpeg",
+      };
+      setGalleryItems((prev) => [newEntry, ...prev].slice(0, 10));
+      setSelectedUploadKey(uploadKey);
+      // Keep freshBlobUrl alive for the preview until user switches away
+    } catch (err) {
+      if (import.meta.env.DEV) console.error("Upload error:", err);
+      setUploadError(
+        err instanceof Error ? err.message : "Upload failed — try again.",
+      );
+      if (freshBlobUrl) URL.revokeObjectURL(freshBlobUrl);
+      setFreshBlobUrl(null);
+    } finally {
+      setUploading(false);
     }
   };
 
+  const handleGallerySelect = useCallback(
+    (key: string) => {
+      if (freshBlobUrl) {
+        URL.revokeObjectURL(freshBlobUrl);
+        setFreshBlobUrl(null);
+      }
+      setSelectedUploadKey(key);
+      setCardsFromImage(null);
+      setUploadError(null);
+    },
+    [freshBlobUrl],
+  );
+
   const handleModelChange = useCallback((value: VisionProvider | "auto") => {
     setSelectedModel(value);
-    try { localStorage.setItem(MODEL_STORAGE_KEY, value); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(MODEL_STORAGE_KEY, value);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const runAnalyze = useCallback(async () => {
-    if (!imageFile) return;
+    if (!selectedUploadKey) return;
     setUploadError(null);
     setAnalyzing(true);
     try {
       const provider = selectedModel === "auto" ? undefined : selectedModel;
-      const { uploadKey } = await uploadImage(imageFile);
-      const { cards } = await analyzeImage(uploadKey, provider);
+      const { cards } = await analyzeImage(selectedUploadKey, provider);
       setCardsFromImage(cards);
     } catch (err) {
       if (import.meta.env.DEV) console.error("Analyze error:", err);
       setUploadError(
-        err instanceof Error ? err.message : "Something went wrong — try again later."
+        err instanceof Error
+          ? err.message
+          : "Something went wrong — try again later.",
       );
     } finally {
       setAnalyzing(false);
     }
-  }, [imageFile, selectedModel]);
+  }, [selectedUploadKey, selectedModel]);
 
-  useEffect(() => {
-    if (mode !== "upload" || !imageFile || !previewUrl || cardsFromImage !== null || analyzing || uploadError !== null)
-      return;
-    runAnalyze();
-  }, [mode, imageFile, previewUrl, cardsFromImage, analyzing, uploadError, runAnalyze]);
+  // The image to show in preview: fresh blob if just uploaded, else R2 URL
+  const previewSrc =
+    freshBlobUrl ?? (selectedUploadKey ? getImageUrl(selectedUploadKey) : null);
 
   const overlayBoxes = cardsFromImage ?? [];
   const showBboxOverlay =
     overlayBoxes.length > 0 &&
     overlayBoxes.some((item) => item.bbox[2] > 0 && item.bbox[3] > 0);
+
+  const busy = uploading || analyzing;
 
   return (
     <>
@@ -208,90 +301,113 @@ function App() {
 
       {mode === "upload" && (
         <section className="upload-section">
-          <div>Upload a photo of your Set cards.</div>
+          {cardsFromImage !== null && !analyzing && (
+            <div className="upload-board-summary">
+              <SetBoard
+                cards={sortedCards.map((c) =>
+                  c.card.replace(/Outlined/g, "Empty"),
+                )}
+                boardWidth={3}
+              />
+              <SetsFound
+                setsFound={findAllSets(
+                  cardsFromImage.map((c) =>
+                    c.card.replace(/Outlined/g, "Empty"),
+                  ),
+                )}
+                visible={sortedCards.length > 0}
+              />
+            </div>
+          )}
+
+          <div className="analyze-controls">
+            <ModelSelector
+              providers={availableProviders}
+              selected={selectedModel}
+              onChange={handleModelChange}
+              disabled={busy}
+            />
+            <button
+              type="button"
+              className="analyze-button"
+              onClick={runAnalyze}
+              disabled={busy || !selectedUploadKey}
+            >
+              {analyzing ? "Analyzing…" : "Analyze"}
+            </button>
+          </div>
+
+          {previewSrc && (
+            <div className="upload-preview-wrap">
+              <div className="preview-wrap">
+                <img
+                  src={previewSrc}
+                  alt="Selected Set cards"
+                  className="preview-image"
+                />
+                {(uploading || analyzing) && (
+                  <div className="preview-overlay" aria-hidden="true">
+                    <div className="spinner" aria-label="Processing" />
+                    <span className="spinner-label">
+                      {uploading ? "Uploading…" : "Analyzing…"}
+                    </span>
+                  </div>
+                )}
+                {!busy && showBboxOverlay && (
+                  <div className="bbox-overlay" aria-hidden="true">
+                    {overlayBoxes.map((item, i) => (
+                      <div
+                        key={`card-${i}`}
+                        className="bbox-box"
+                        style={{
+                          left: `${item.bbox[0] * 100}%`,
+                          top: `${item.bbox[1] * 100}%`,
+                          width: `${item.bbox[2] * 100}%`,
+                          height: `${item.bbox[3] * 100}%`,
+                        }}
+                        title={
+                          item.card
+                            ? item.card.replace(/-/g, " ")
+                            : `Card ${i + 1}`
+                        }
+                      >
+                        <span className="bbox-label">{i + 1}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <input
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
             onChange={handleFileChange}
-            disabled={analyzing}
+            disabled={busy}
             className="file-input"
             aria-label="Choose image"
           />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={analyzing}
-            className="upload-button"
-          >
-            Upload photo
-          </button>
-          <ModelSelector
-            providers={availableProviders}
-            selected={selectedModel}
-            onChange={handleModelChange}
-            disabled={analyzing}
-          />
+
+          {galleryLoading && (
+            <div className="gallery-loading">Loading your photos…</div>
+          )}
+
+          {!galleryLoading && (
+            <ImageGallery
+              items={galleryItems}
+              selectedKey={selectedUploadKey}
+              onSelect={handleGallerySelect}
+              onUploadNew={() => fileInputRef.current?.click()}
+              disabled={busy}
+            />
+          )}
+
           {uploadError && (
             <div className="upload-error" role="alert">
               {uploadError}
             </div>
-          )}
-
-          {previewUrl && (
-            <>
-              <div className="upload-preview-wrap">
-                <div className="preview-wrap">
-                  <img
-                    src={previewUrl}
-                    alt="Uploaded Set cards"
-                    className="preview-image"
-                  />
-                  {analyzing && (
-                    <div className="preview-overlay" aria-hidden="true">
-                      <div className="spinner" aria-label="Processing" />
-                      <span className="spinner-label">Analyzing…</span>
-                    </div>
-                  )}
-                  {!analyzing && showBboxOverlay && (
-                    <div className="bbox-overlay" aria-hidden="true">
-                      {overlayBoxes.map((item, i) => (
-                        <div
-                          key={`card-${i}`}
-                          className="bbox-box"
-                          style={{
-                            left: `${item.bbox[0] * 100}%`,
-                            top: `${item.bbox[1] * 100}%`,
-                            width: `${item.bbox[2] * 100}%`,
-                            height: `${item.bbox[3] * 100}%`,
-                          }}
-                          title={
-                            item.card ? item.card.replace(/-/g, " ") : `Card ${i + 1}`
-                          }
-                        >
-                          <span className="bbox-label">{i + 1}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {cardsFromImage !== null && !analyzing && (
-                <div className="upload-board-summary">
-                  <SetBoard
-                    cards={sortedCards.map((c) => c.card.replace(/Outlined/g, "Empty"))}
-                    boardWidth={3}
-                  />
-                  <SetsFound
-                    setsFound={findAllSets(
-                      cardsFromImage.map((c) => c.card.replace(/Outlined/g, "Empty"))
-                    )}
-                    visible={sortedCards.length > 0}
-                  />
-                </div>
-              )}
-            </>
           )}
         </section>
       )}
@@ -301,11 +417,13 @@ function App() {
           <div className="board-summary">
             <SetBoard cards={manualSelectedCards} boardWidth={3} />
             <SetsFound
-            setsFound={findAllSets(manualSelectedCards)}
-            visible={hasCardsSelected}
-          />
+              setsFound={findAllSets(manualSelectedCards)}
+              visible={hasCardsSelected}
+            />
           </div>
-          <p className="visual-instruction">Click or tap cards to select or deselect.</p>
+          <p className="visual-instruction">
+            Click or tap cards to select or deselect.
+          </p>
           {hasCardsSelected && (
             <div className="clear-cards-wrap">
               <button
@@ -320,7 +438,11 @@ function App() {
               </button>
             </div>
           )}
-          <div className="set-visual-grid" role="group" aria-label="All Set cards">
+          <div
+            className="set-visual-grid"
+            role="group"
+            aria-label="All Set cards"
+          >
             {allCards.map((cardId) => {
               const selected = manualSelectedCards.includes(cardId);
               return (
@@ -355,9 +477,9 @@ function App() {
           <div className="board-summary">
             <SetBoard cards={manualSelectedCards} boardWidth={3} />
             <SetsFound
-            setsFound={findAllSets(manualSelectedCards)}
-            visible={hasCardsSelected}
-          />
+              setsFound={findAllSets(manualSelectedCards)}
+              visible={hasCardsSelected}
+            />
           </div>
           <p>Select the visible cards.</p>
           {hasCardsSelected && (

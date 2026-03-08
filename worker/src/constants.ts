@@ -27,6 +27,8 @@ export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const PRESIGN_KEY_TTL_SECONDS = 120;
 export const PENALTY_BOX_MINUTES = 15;
 export const JWT_TTL_HOURS = 24;
+export const UPLOAD_LIST_TTL = 4 * 60 * 60; // 4 hours (seconds)
+export const MAX_UPLOADS_PER_IP = 10;
 
 // Rate limits: per IP (per min), per IP (per day), per session (per min), per session (per day)
 export const LIMITS = {

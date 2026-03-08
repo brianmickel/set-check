@@ -2,7 +2,7 @@ import { corsHeaders, getAllowedOrigins, isAllowedOrigin } from "./cors.js";
 import { signSession, verifySession } from "./jwt.js";
 import { isPenalized, addToPenaltyBox, checkAndIncrement } from "./ratelimit.js";
 import { generateUploadKey, createPresignedPutUrl, UPLOAD_KEY_TTL } from "./presign.js";
-import { MAX_IMAGE_SIZE_ANALYZE } from "./constants.js";
+import { MAX_IMAGE_SIZE_ANALYZE, UPLOAD_LIST_TTL, MAX_UPLOADS_PER_IP } from "./constants.js";
 import { validateImage } from "./image.js";
 import { analyzeSetImage as analyzeWithOpenAI } from "./openai.js";
 import { analyzeSetImage as analyzeWithGemini } from "./gemini.js";
@@ -35,6 +35,12 @@ export interface Env {
   OPENAI_API_KEY?: string;
   GEMINI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
+}
+
+interface UploadEntry {
+  key: string;
+  uploadedAt: number; // unix timestamp ms
+  mime: string;
 }
 
 function isOpenAIConfigured(env: Env): boolean {
@@ -99,6 +105,33 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(parts.join(""));
 }
 
+/** HMAC-SHA256 of IP with JWT_SECRET, returned as 32-char hex. */
+async function hashIp(ip: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(ip));
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 32);
+}
+
+/** Get the IP-indexed upload list from KV. */
+async function getIpUploadList(kv: KVNamespace, ipHash: string): Promise<UploadEntry[]> {
+  const raw = await kv.get(`upload:ip:${ipHash}`);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as UploadEntry[];
+  } catch {
+    return [];
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -111,7 +144,8 @@ export default {
       return new Response(null, { status: 204, headers: cors });
     }
 
-    if (!isAllowedOrigin(origin, allowedOrigins) && request.method !== "GET" && path !== "/api/health") {
+    const isLocalDev = env.LOCAL_DEV === "true";
+    if (!isLocalDev && !isAllowedOrigin(origin, allowedOrigins) && request.method !== "GET" && path !== "/api/health") {
       return jsonResponse({ error: "Forbidden" }, 403, cors);
     }
 
@@ -119,7 +153,7 @@ export default {
     const allowlistedIps = env.ALLOWLISTED_IPS
       ? new Set(env.ALLOWLISTED_IPS.split(",").map((s) => s.trim()).filter(Boolean))
       : new Set<string>();
-    const skipRateLimit = env.LOCAL_DEV === "true" || allowlistedIps.has(ip);
+    const skipRateLimit = isLocalDev || allowlistedIps.has(ip);
 
     if (path === "/api/health") {
       return jsonResponse(
@@ -256,7 +290,6 @@ export default {
       }
       const contentType = request.headers.get("Content-Type") ?? "";
       let bytes: ArrayBuffer;
-      let mimeType: string;
       if (contentType.includes("multipart/form-data")) {
         const formData = await request.formData();
         const file = formData.get("file") ?? formData.get("image");
@@ -264,11 +297,9 @@ export default {
           return jsonResponse({ error: "Missing file" }, 400, cors);
         }
         bytes = await (file as Blob).arrayBuffer();
-        mimeType = (file as Blob).type || "application/octet-stream";
       } else if (contentType.includes("application/json")) {
         const body = (await request.json()) as { imageBase64?: string; mimeType?: string };
         const b64 = body.imageBase64;
-        const mime = body.mimeType ?? "image/jpeg";
         if (!b64 || typeof b64 !== "string") {
           return jsonResponse({ error: "Missing imageBase64" }, 400, cors);
         }
@@ -277,7 +308,6 @@ export default {
           const arr = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
           bytes = arr.buffer;
-          mimeType = mime;
         } catch {
           return jsonResponse({ error: "Invalid base64" }, 400, cors);
         }
@@ -296,14 +326,71 @@ export default {
           cors
         );
       }
-      const key = generateUploadKey();
-      await env.RATE_LIMIT.put(`upload:issued:${key}`, "1", {
-        expirationTtl: UPLOAD_KEY_TTL,
-      });
-      await env.UPLOADS.put(key, bytes, {
+
+      const uploadKey = generateUploadKey();
+      await env.UPLOADS.put(uploadKey, bytes, {
         httpMetadata: { contentType: validation.mime },
       });
-      return jsonResponse({ uploadKey: key }, 200, cors);
+
+      // Update IP-indexed gallery list
+      const ipHash = await hashIp(ip, env.JWT_SECRET);
+      const listKey = `upload:ip:${ipHash}`;
+      const list = await getIpUploadList(env.RATE_LIMIT, ipHash);
+
+      // Evict oldest entries if at limit
+      while (list.length >= MAX_UPLOADS_PER_IP) {
+        const oldest = list.shift()!;
+        await env.UPLOADS.delete(oldest.key).catch(() => {});
+        await env.RATE_LIMIT.delete(`upload:owner:${oldest.key}`).catch(() => {});
+      }
+
+      // Add new entry
+      const entry: UploadEntry = {
+        key: uploadKey,
+        uploadedAt: Date.now(),
+        mime: validation.mime,
+      };
+      list.push(entry);
+
+      await Promise.all([
+        env.RATE_LIMIT.put(listKey, JSON.stringify(list), { expirationTtl: UPLOAD_LIST_TTL }),
+        env.RATE_LIMIT.put(`upload:owner:${uploadKey}`, ipHash, { expirationTtl: UPLOAD_LIST_TTL }),
+      ]);
+
+      return jsonResponse({ uploadKey }, 200, cors);
+    }
+
+    if (path === "/api/uploads" && request.method === "GET") {
+      const token = getBearerToken(request);
+      if (!token) {
+        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+      }
+      const session = await verifySession(token, env.JWT_SECRET);
+      if (!session) {
+        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+      }
+      const ipHash = await hashIp(ip, env.JWT_SECRET);
+      const list = await getIpUploadList(env.RATE_LIMIT, ipHash);
+      return jsonResponse({ uploads: list }, 200, cors);
+    }
+
+    if (path === "/api/image" && request.method === "GET") {
+      const key = url.searchParams.get("key");
+      if (!key || !key.startsWith("uploads/") || key.includes("..")) {
+        return jsonResponse({ error: "Invalid key" }, 400, cors);
+      }
+      const object = await env.UPLOADS.get(key);
+      if (!object) {
+        return jsonResponse({ error: "Not found" }, 404, cors);
+      }
+      const contentTypeHeader = object.httpMetadata?.contentType ?? "image/jpeg";
+      return new Response(object.body, {
+        headers: {
+          "Content-Type": contentTypeHeader,
+          "Cache-Control": "private, max-age=3600",
+          ...cors,
+        },
+      });
     }
 
     if (path === "/api/analyze" && request.method === "POST") {
@@ -379,11 +466,12 @@ export default {
         return jsonResponse({ error: "Invalid uploadKey" }, 400, cors);
       }
 
-      const issued = await env.RATE_LIMIT.get(`upload:issued:${uploadKey}`);
-      if (!issued) {
+      // Verify IP ownership
+      const ipHash = await hashIp(ip, env.JWT_SECRET);
+      const ownerHash = await env.RATE_LIMIT.get(`upload:owner:${uploadKey}`);
+      if (!ownerHash || ownerHash !== ipHash) {
         return jsonResponse({ error: "Invalid or expired upload key" }, 400, cors);
       }
-      await env.RATE_LIMIT.delete(`upload:issued:${uploadKey}`);
 
       const object = await env.UPLOADS.get(uploadKey);
       if (!object) {
@@ -394,7 +482,6 @@ export default {
         const bytes = await object.arrayBuffer();
         const validation = validateImage(bytes);
         if (!validation.ok) {
-          await env.UPLOADS.delete(uploadKey);
           return jsonResponse(
             { error: validation.message },
             validation.status,
@@ -402,7 +489,6 @@ export default {
           );
         }
         if (bytes.byteLength > MAX_IMAGE_SIZE_ANALYZE) {
-          await env.UPLOADS.delete(uploadKey);
           return jsonResponse(
             {
               error:
@@ -428,7 +514,6 @@ export default {
           cards = await analyzeWithOpenAI(base64, validation.mime, apiKey, includeBoundingBoxes);
         }
       } catch (e) {
-        await env.UPLOADS.delete(uploadKey).catch(() => {});
         const raw = e instanceof Error ? e.message : String(e);
         const stack = e instanceof Error ? e.stack : undefined;
         console.error("[analyze] 502:", raw, stack ? `\n${stack}` : "");
@@ -443,7 +528,6 @@ export default {
         if (env.LOCAL_DEV === "true") body.detail = raw;
         return jsonResponse(body, 502, cors);
       }
-      await env.UPLOADS.delete(uploadKey);
       return jsonResponse({ cards, provider }, 200, cors);
     }
 

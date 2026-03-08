@@ -12,6 +12,37 @@ export interface UploadResult {
   uploadKey: string;
 }
 
+export interface GalleryItem {
+  key: string;
+  uploadedAt: number; // unix timestamp ms
+  mime: string;
+}
+
+/** URL to serve an uploaded image from R2 via the worker. */
+export function getImageUrl(key: string): string {
+  return apiUrl(`image?key=${encodeURIComponent(key)}`);
+}
+
+/** List all uploads for the current IP from the worker. */
+export async function listUploads(): Promise<GalleryItem[]> {
+  let token: string;
+  try {
+    token = await ensureSessionToken();
+  } catch {
+    return [];
+  }
+  try {
+    const res = await fetchWithBackoff(apiUrl("uploads"), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { uploads?: GalleryItem[] };
+    return Array.isArray(data.uploads) ? data.uploads : [];
+  } catch {
+    return [];
+  }
+}
+
 export interface CardWithBbox {
   card: string;
   bbox: [number, number, number, number]; // x_min, y_min, width, height normalized 0-1

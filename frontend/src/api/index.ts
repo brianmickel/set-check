@@ -13,7 +13,10 @@ export {
   uploadImage,
   analyzeImage,
   analyzeImageWithBoxes,
+  listUploads,
+  getImageUrl,
   type UploadResult,
   type CardWithBbox,
   type AnalyzeResult,
+  type GalleryItem,
 } from "./uploadApi";
