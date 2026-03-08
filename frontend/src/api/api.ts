@@ -98,6 +98,28 @@ export async function ensureSessionToken(): Promise<string> {
   return fetchSessionToken();
 }
 
+/**
+ * Authenticated fetch: adds Bearer token and retries once on 401 after refetching session.
+ * Use for all API calls that require auth. Does not parse response; caller handles res.ok and body.
+ */
+export async function fetchAuth(url: string, init?: RequestInit): Promise<Response> {
+  const token = await ensureSessionToken();
+  const headers = new Headers(init?.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  let res = await fetchWithBackoff(url, { ...init, headers });
+  if (res.status === 401) {
+    clearStoredSessionToken();
+    try {
+      token = await fetchSessionToken();
+    } catch {
+      throw new Error(toUserFriendlyError(401));
+    }
+    headers.set("Authorization", `Bearer ${token}`);
+    res = await fetchWithBackoff(url, { ...init, headers });
+  }
+  return res;
+}
+
 /** User-friendly error message (no "Unauthorized", "Rate limit", etc.). */
 export function toUserFriendlyError(status: number): string {
   if (status === 429) {

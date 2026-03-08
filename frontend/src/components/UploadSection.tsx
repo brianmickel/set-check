@@ -1,11 +1,7 @@
 import type React from "react";
-import { ModelSelector } from "./ModelSelector";
-import { ImageGallery } from "./ImageGallery";
 import { ImagePreview } from "./ImagePreview";
-import { SetBoard } from "./SetBoard";
-import { SetsFound } from "./SetsFound";
 import { CardEditModal, DEFAULT_CARD } from "./CardEditModal";
-import { findAllSets } from "../utils/setLogic";
+import { AnalyzeControls, UploadBoardSummary, UploadGallery } from "./upload";
 import type { CardWithBbox, GalleryItem } from "../api";
 import type { VisionProvider, ProviderOption } from "../api/health";
 
@@ -117,79 +113,32 @@ export function UploadSection({
         />
       )}
       {cardsFromImage !== null && !analyzing && (
-        <div className="upload-board-summary">
-          {analysisFromCache && (
-            <p className="analysis-cache-hint analysis-cache-hint-with-invalidate" role="status">
-              From saved result (no LLM used).
-              <button
-                type="button"
-                className="invalidate-cache-btn"
-                onClick={handleInvalidateCache}
-                disabled={invalidating || busy}
-                aria-busy={invalidating}
-              >
-                {invalidating ? "Clearing…" : "Invalidate"}
-              </button>
-            </p>
-          )}
-          {invalidateError && (
-            <p className="confirm-error" role="alert">
-              {invalidateError}
-            </p>
-          )}
-          {!analysisFromCache && !confirmSuccess && (
-            <div className="confirm-correct-row">
-              <span className="confirm-correct-label">Result correct?</span>
-              <button
-                type="button"
-                className="confirm-correct-btn"
-                onClick={handleConfirmCorrect}
-                disabled={confirming || busy}
-                aria-busy={confirming}
-              >
-                {confirming ? "Saving…" : "Mark as correct"}
-              </button>
-            </div>
-          )}
-          {confirmSuccess && (
-            <p className="confirm-success" role="status">
-              Saved — this result will be reused for this image next time.
-            </p>
-          )}
-          {confirmError && (
-            <p className="confirm-error" role="alert">
-              {confirmError}
-            </p>
-          )}
-          <SetBoard
-            cards={sortedCards.map((c) => c.card.replace(/Outlined/g, "Empty"))}
-            boardWidth={3}
-            onCardClick={handleCardClick}
-            onAddCard={handleOpenAddCard}
-          />
-          <SetsFound
-            setsFound={findAllSets(cardsFromImage.map((c) => c.card.replace(/Outlined/g, "Empty")))}
-            visible={sortedCards.length > 0}
-          />
-        </div>
+        <UploadBoardSummary
+          cardsFromImage={cardsFromImage}
+          sortedCards={sortedCards}
+          analysisFromCache={analysisFromCache}
+          confirming={confirming}
+          confirmError={confirmError}
+          confirmSuccess={confirmSuccess}
+          handleConfirmCorrect={handleConfirmCorrect}
+          invalidating={invalidating}
+          invalidateError={invalidateError}
+          handleInvalidateCache={handleInvalidateCache}
+          busy={busy}
+          handleCardClick={handleCardClick}
+          handleOpenAddCard={handleOpenAddCard}
+        />
       )}
 
-      <div className="analyze-controls">
-        <ModelSelector
-          providers={providers}
-          selected={selectedModel}
-          onChange={onModelChange}
-          disabled={busy}
-        />
-        <button
-          type="button"
-          className="analyze-button"
-          onClick={runAnalyze}
-          disabled={busy || !selectedUploadKey}
-        >
-          {analyzing ? "Analyzing…" : "Analyze"}
-        </button>
-      </div>
+      <AnalyzeControls
+        providers={providers}
+        selectedModel={selectedModel}
+        onModelChange={onModelChange}
+        runAnalyze={runAnalyze}
+        busy={busy}
+        analyzing={analyzing}
+        selectedUploadKey={selectedUploadKey}
+      />
 
       {previewSrc && (
         <ImagePreview
@@ -201,36 +150,17 @@ export function UploadSection({
         />
       )}
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-        onChange={handleFileChange}
-        disabled={busy}
-        className="file-input"
-        aria-label="Choose image"
+      <UploadGallery
+        galleryItems={galleryItems}
+        galleryLoading={galleryLoading}
+        selectedUploadKey={selectedUploadKey}
+        handleGallerySelect={handleGallerySelect}
+        handleDelete={handleDelete}
+        fileInputRef={fileInputRef}
+        handleFileChange={handleFileChange}
+        busy={busy}
+        uploadError={uploadError}
       />
-
-      {galleryLoading && (
-        <div className="gallery-loading">Loading your photos…</div>
-      )}
-
-      {!galleryLoading && (
-        <ImageGallery
-          items={galleryItems}
-          selectedKey={selectedUploadKey}
-          onSelect={handleGallerySelect}
-          onUploadNew={() => fileInputRef.current?.click()}
-          onDelete={handleDelete}
-          disabled={busy}
-        />
-      )}
-
-      {uploadError && (
-        <div className="upload-error" role="alert">
-          {uploadError}
-        </div>
-      )}
     </section>
   );
 }
