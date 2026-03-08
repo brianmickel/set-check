@@ -22,8 +22,7 @@ export const DEFAULT_ALLOWED_ORIGINS = [
 ];
 
 export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB (upload)
-/** Smaller limit for analyze path to avoid runtime CPU/payload limits when sending to OpenAI */
-export const MAX_IMAGE_SIZE_ANALYZE = 10 * 1024 * 1024; // 2 MB
+export const MAX_IMAGE_SIZE_ANALYZE = 10 * 1024 * 1024; // 10 MB
 export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const PRESIGN_KEY_TTL_SECONDS = 120;
 export const PENALTY_BOX_MINUTES = 15;

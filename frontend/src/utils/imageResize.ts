@@ -2,8 +2,8 @@
  * Resize image to fit within maxDimension on the long edge, export as JPEG.
  * Reduces payload size so the worker is less likely to hit CPU/memory limits (502).
  */
-const MAX_DIMENSION = 1024;
-const JPEG_QUALITY = 0.85;
+const MAX_DIMENSION = 2048;
+const JPEG_QUALITY = 0.92;
 
 export async function resizeImageForAnalyze(file: File): Promise<File> {
   return new Promise((resolve, reject) => {
@@ -13,7 +13,7 @@ export async function resizeImageForAnalyze(file: File): Promise<File> {
       URL.revokeObjectURL(url);
       const w = img.naturalWidth;
       const h = img.naturalHeight;
-      if (w <= MAX_DIMENSION && h <= MAX_DIMENSION && file.size <= 800 * 1024) {
+      if (w <= MAX_DIMENSION && h <= MAX_DIMENSION && file.size <= 3 * 1024 * 1024) {
         resolve(file);
         return;
       }
