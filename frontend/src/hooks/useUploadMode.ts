@@ -6,6 +6,7 @@ import {
   analyzeImage,
   listUploads,
   getImageUrl,
+  deleteUpload,
   type CardWithBbox,
   type GalleryItem,
 } from "../api";
@@ -100,6 +101,28 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
     [freshBlobUrl]
   );
 
+  const handleDelete = useCallback(
+    async (key: string) => {
+      setUploadError(null);
+      try {
+        await deleteUpload(key);
+        setGalleryItems((prev) => prev.filter((e) => e.key !== key));
+        if (selectedUploadKey === key) {
+          setSelectedUploadKey(null);
+          setCardsFromImage(null);
+          if (freshBlobUrl) {
+            URL.revokeObjectURL(freshBlobUrl);
+            setFreshBlobUrl(null);
+          }
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) console.error("Delete error:", err);
+        setUploadError(err instanceof Error ? err.message : "Could not delete — try again.");
+      }
+    },
+    [selectedUploadKey, freshBlobUrl]
+  );
+
   const runAnalyze = useCallback(async () => {
     if (!selectedUploadKey) return;
     setUploadError(null);
@@ -145,6 +168,7 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
     fileInputRef,
     handleFileChange,
     handleGallerySelect,
+    handleDelete,
     runAnalyze,
   };
 }

@@ -393,6 +393,33 @@ export default {
       });
     }
 
+    if (path === "/api/image" && request.method === "DELETE") {
+      const token = getBearerToken(request);
+      if (!token) {
+        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+      }
+      const session = await verifySession(token, env.JWT_SECRET);
+      if (!session) {
+        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+      }
+      const key = url.searchParams.get("key");
+      if (!key || !key.startsWith("uploads/") || key.includes("..")) {
+        return jsonResponse({ error: "Invalid key" }, 400, cors);
+      }
+      const ipHash = await hashIp(ip, env.JWT_SECRET);
+      const ownerHash = await env.RATE_LIMIT.get(`upload:owner:${key}`);
+      if (!ownerHash || ownerHash !== ipHash) {
+        return jsonResponse({ error: "Invalid or expired upload key" }, 400, cors);
+      }
+      await env.UPLOADS.delete(key);
+      await env.RATE_LIMIT.delete(`upload:owner:${key}`);
+      const listKey = `upload:ip:${ipHash}`;
+      const list = await getIpUploadList(env.RATE_LIMIT, ipHash);
+      const nextList = list.filter((e) => e.key !== key);
+      await env.RATE_LIMIT.put(listKey, JSON.stringify(nextList), { expirationTtl: UPLOAD_LIST_TTL });
+      return jsonResponse({ ok: true }, 200, cors);
+    }
+
     if (path === "/api/analyze" && request.method === "POST") {
       const token = getBearerToken(request);
       if (!token) {

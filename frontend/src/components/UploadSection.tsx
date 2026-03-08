@@ -25,6 +25,7 @@ interface Props {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleGallerySelect: (key: string) => void;
+  handleDelete: (key: string) => void;
   runAnalyze: () => void;
   // from App
   providers: ProviderOption[];
@@ -47,6 +48,7 @@ export function UploadSection({
   fileInputRef,
   handleFileChange,
   handleGallerySelect,
+  handleDelete,
   runAnalyze,
   providers,
   selectedModel,
@@ -115,6 +117,7 @@ export function UploadSection({
           selectedKey={selectedUploadKey}
           onSelect={handleGallerySelect}
           onUploadNew={() => fileInputRef.current?.click()}
+          onDelete={handleDelete}
           disabled={busy}
         />
       )}

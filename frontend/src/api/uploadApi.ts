@@ -23,6 +23,41 @@ export function getImageUrl(key: string): string {
   return apiUrl(`image?key=${encodeURIComponent(key)}`);
 }
 
+/** Delete an upload by key. Requires ownership (Bearer token). */
+export async function deleteUpload(key: string): Promise<void> {
+  let token: string;
+  try {
+    token = await ensureSessionToken();
+  } catch (e) {
+    const base = toUserFriendlyError(0);
+    throw new Error(
+      import.meta.env.DEV && e instanceof Error ? `${base} [${e.message}]` : base
+    );
+  }
+  const url = apiUrl(`image?key=${encodeURIComponent(key)}`);
+  let res = await fetchWithBackoff(url, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401) {
+    clearStoredSessionToken();
+    try {
+      token = await fetchSessionToken();
+      res = await fetchWithBackoff(url, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      throw new Error(toUserFriendlyError(401));
+    }
+  }
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    const msg = err.error ?? toUserFriendlyError(res.status);
+    throw new Error(import.meta.env.DEV ? `${msg} (${res.status})` : msg);
+  }
+}
+
 /** List all uploads for the current IP from the worker. */
 export async function listUploads(): Promise<GalleryItem[]> {
   let token: string;

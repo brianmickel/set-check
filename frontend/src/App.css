@@ -129,6 +129,43 @@
   color: #999;
 }
 
+.gallery-tile-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.gallery-tile-delete {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gallery-tile-delete:hover:not(:disabled) {
+  background: rgba(180, 0, 0, 0.9);
+}
+
+.gallery-tile-delete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .gallery-tile {
   position: relative;
   width: 80px;

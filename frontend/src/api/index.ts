@@ -15,6 +15,7 @@ export {
   analyzeImageWithBoxes,
   listUploads,
   getImageUrl,
+  deleteUpload,
   type UploadResult,
   type CardWithBbox,
   type AnalyzeResult,

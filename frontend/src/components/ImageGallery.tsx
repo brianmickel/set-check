@@ -15,10 +15,11 @@ interface Props {
   selectedKey: string | null;
   onSelect: (key: string) => void;
   onUploadNew: () => void;
+  onDelete?: (key: string) => void;
   disabled?: boolean;
 }
 
-export function ImageGallery({ items, selectedKey, onSelect, onUploadNew, disabled }: Props) {
+export function ImageGallery({ items, selectedKey, onSelect, onUploadNew, onDelete, disabled }: Props) {
   // Show newest first
   const sorted = [...items].sort((a, b) => b.uploadedAt - a.uploadedAt);
 
@@ -38,23 +39,39 @@ export function ImageGallery({ items, selectedKey, onSelect, onUploadNew, disabl
         {sorted.map((item) => {
           const selected = item.key === selectedKey;
           return (
-            <button
-              key={item.key}
-              type="button"
-              className={`gallery-tile ${selected ? "gallery-tile--selected" : ""}`}
-              onClick={() => onSelect(item.key)}
-              disabled={disabled}
-              aria-pressed={selected}
-              aria-label={`Photo from ${timeAgo(item.uploadedAt)}`}
-            >
-              <img
-                src={getImageUrl(item.key)}
-                alt=""
-                className="gallery-thumb"
-                loading="lazy"
-              />
-              <span className="gallery-tile-time">{timeAgo(item.uploadedAt)}</span>
-            </button>
+            <div key={item.key} className="gallery-tile-wrap">
+              <button
+                type="button"
+                className={`gallery-tile ${selected ? "gallery-tile--selected" : ""}`}
+                onClick={() => onSelect(item.key)}
+                disabled={disabled}
+                aria-pressed={selected}
+                aria-label={`Photo from ${timeAgo(item.uploadedAt)}`}
+              >
+                <img
+                  src={getImageUrl(item.key)}
+                  alt=""
+                  className="gallery-thumb"
+                  loading="lazy"
+                />
+                <span className="gallery-tile-time">{timeAgo(item.uploadedAt)}</span>
+              </button>
+              {onDelete && (
+                <button
+                  type="button"
+                  className="gallery-tile-delete"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete(item.key);
+                  }}
+                  disabled={disabled}
+                  aria-label={`Delete photo from ${timeAgo(item.uploadedAt)}`}
+                >
+                  ×
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
