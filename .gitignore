@@ -25,6 +25,16 @@ worker/.dev.vars
 # Wrangler local state (dev KV/R2, etc.)
 worker/.wrangler
 
+# Vitest
+**/coverage
+**/.vitest
+
+# Playwright
+**/test-results
+**/playwright-report
+**/blob-report
+**/playwright/.cache
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
