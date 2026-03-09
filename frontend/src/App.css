@@ -269,6 +269,34 @@
   margin-top: 0.5rem;
 }
 
+.error-boundary-fallback {
+  margin: 1.5rem auto;
+  padding: 1rem;
+  max-width: 24rem;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #f9f9f9;
+}
+
+.error-boundary-fallback p {
+  margin: 0 0 1rem;
+  color: #333;
+}
+
+.error-boundary-fallback button {
+  margin: 0 0.25rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #888;
+  background: #fff;
+  cursor: pointer;
+}
+
+.error-boundary-fallback button:hover {
+  background: #eee;
+}
+
 .analysis-cache-hint {
   margin: 0.5rem 0 0;
   font-size: 0.85rem;

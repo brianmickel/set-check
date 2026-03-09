@@ -77,6 +77,11 @@ npx wrangler r2 bucket create set-check-uploads
 
 The frontend proxies `/api` to `http://127.0.0.1:8787` in dev. Session is fetched silently on load; user flow is: choose photo → analyzing… → cards / Has Set?
 
+**Testing**
+
+- **Unit tests:** From `frontend/`: `npm run test:run` (Vitest, setLogic). From `worker/`: `npm run test:run` (Vitest, vision validation).
+- **E2E:** From `frontend/`: `npm run e2e` or `npm run e2e:run`. Playwright starts the frontend dev server if needed (or reuses one already running on port 5173). For the upload+analyze flow you also need the worker (`npm run dev:worker`).
+
 **Express backend (optional):**
 
 Copy `backend/.env.example` to `backend/.env` and set `PORT` (default 3000), optionally `FRONTEND_ORIGIN`. The backend loads `.env` via dotenv.

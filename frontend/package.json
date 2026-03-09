@@ -8,6 +8,8 @@
     "dev": "vite",
     "test": "vitest",
     "test:run": "vitest run",
+    "e2e": "playwright test",
+    "e2e:run": "playwright test --project=default",
     "build": "tsc -b && vite build",
     "generate-cards": "node scripts/generate-card-svgs.js",
     "prebuild": "npm run generate-cards",
@@ -36,7 +38,8 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
-    "vitest": "^2.1.0"
+    "vitest": "^2.1.0",
+    "@playwright/test": "^1.49.0"
   },
   "homepage": "http://brianmickel.github.io/set-check"
 }
