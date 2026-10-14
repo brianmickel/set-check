@@ -6,11 +6,6 @@
 
 import { getCardUrl } from "../assets/cards";
 
-/** Normalize card id for asset lookup (Outlined -> Empty). */
-export function cardIdToAssetId(cardId: string): string {
-  return cardId.replace(/Outlined/g, "Empty");
-}
-
 interface SetCardSVGProps {
   /** Card id e.g. "2-Green-Empty-Oval" (Outlined is treated as Empty) */
   cardId: string;
