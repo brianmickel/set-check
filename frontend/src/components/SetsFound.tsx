@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { SetCardSVG } from "./SetCardSVG";
 import "./SetsFound.css";
 
@@ -14,9 +14,12 @@ export function SetsFound({ setsFound, visible = true }: SetsFoundProps) {
 
   const hasSet = setsFound === null ? null : setsFound.length > 0;
 
-  useEffect(() => {
+  const [prevHasSet, setPrevHasSet] = useState<boolean | null | undefined>(undefined);
+  // Collapse the list when there is no longer a set (adjusting state during render).
+  if (hasSet !== prevHasSet) {
+    setPrevHasSet(hasSet);
     if (!hasSet) setShowPossibleSets(false);
-  }, [hasSet]);
+  }
 
   if (!visible) return null;
 

@@ -43,10 +43,17 @@ export function useUploadMode(selectedModel: VisionProvider | "auto", isActive: 
     };
   }, [freshBlobUrl]);
 
+  // Mark the gallery as loading as soon as the tab becomes active
+  // (adjusting state during render; the fetch itself happens in the effect below).
+  const [prevIsActive, setPrevIsActive] = useState(false);
+  if (isActive !== prevIsActive) {
+    setPrevIsActive(isActive);
+    if (isActive) setGalleryLoading(true);
+  }
+
   // Load gallery when tab becomes active
   useEffect(() => {
     if (!isActive) return;
-    setGalleryLoading(true);
     listUploads()
       .then((items) => {
         setGalleryItems(items);
