@@ -77,21 +77,32 @@ export function CardEditModal({
   const [fill, setFill] = useState(fills[0]!);
   const [shape, setShape] = useState(shapes[0]!);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [syncedProps, setSyncedProps] = useState<{ isOpen: boolean; currentCard: string } | null>(null);
+
+  // Reset the form from props whenever the modal opens or the card changes
+  // (adjusting state during render instead of in an effect).
+  if (syncedProps === null || syncedProps.isOpen !== isOpen || syncedProps.currentCard !== currentCard) {
+    setSyncedProps({ isOpen, currentCard });
+    if (isOpen) {
+      const parts = parseCard(currentCard);
+      setNumber(parts.number);
+      setColor(parts.color);
+      setFill(parts.fill);
+      setShape(parts.shape);
+      setCreateError(null);
+    }
+  }
 
   useEffect(() => {
-    if (!isOpen) return;
-    const parts = parseCard(currentCard);
-    setNumber(parts.number);
-    setColor(parts.color);
-    setFill(parts.fill);
-    setShape(parts.shape);
-    setCreateError(null);
-    dialogRef.current?.showModal();
+    if (isOpen) dialogRef.current?.showModal();
   }, [isOpen, currentCard]);
 
-  useEffect(() => {
+  /** Wrap an attribute setter so a real change clears the duplicate-card error. */
+  const changeAttr = (current: string, set: (v: string) => void) => (v: string) => {
+    if (v === current) return;
+    set(v);
     setCreateError(null);
-  }, [number, color, fill, shape]);
+  };
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -146,28 +157,28 @@ export function CardEditModal({
           label="Number"
           value={number}
           options={numbers}
-          onChange={setNumber}
+          onChange={changeAttr(number, setNumber)}
           idPrefix="card-edit-number"
         />
         <AttributeGroup
           label="Color"
           value={color}
           options={colors}
-          onChange={setColor}
+          onChange={changeAttr(color, setColor)}
           idPrefix="card-edit-color"
         />
         <AttributeGroup
           label="Fill"
           value={fill}
           options={fills}
-          onChange={setFill}
+          onChange={changeAttr(fill, setFill)}
           idPrefix="card-edit-fill"
         />
         <AttributeGroup
           label="Shape"
           value={shape}
           options={shapes}
-          onChange={setShape}
+          onChange={changeAttr(shape, setShape)}
           idPrefix="card-edit-shape"
         />
         {createError && (
