@@ -1,4 +1,5 @@
-# Deploy Cloudflare Worker (API). Requires GitHub secrets: CF_API_TOKEN, CF_ACCOUNT_ID, KV_NAMESPACE_ID.
+# Deploy Cloudflare Worker (API). Requires GitHub secrets: CF_API_TOKEN, CF_ACCOUNT_ID, ALLOWED_ORIGINS.
+# The RATE_LIMIT KV namespace id is committed in worker/wrangler.toml (not a credential).
 # Worker runtime secrets (OPENAI_API_KEY, JWT_SECRET) must be set in Cloudflare, not here.
 name: Deploy Worker
 
@@ -27,16 +28,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Inject KV namespace id
-        env:
-          KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
-        run: |
-          if [ -z "$KV_NAMESPACE_ID" ]; then
-            echo "::error::KV_NAMESPACE_ID secret is not set. Add it in repo Settings → Secrets. See docs/DEPLOY.md"
-            exit 1
-          fi
-          sed -i.bak "s/<SET_CHECK_RATE_LIMIT_KV_ID>/$KV_NAMESPACE_ID/g" worker/wrangler.toml
 
       - name: Inject ALLOWED_ORIGINS (CORS)
         env:
