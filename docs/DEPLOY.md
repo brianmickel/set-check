@@ -106,14 +106,14 @@ In `.dev.vars`, `LOCAL_DEV=true` skips rate limits, and an empty
 Checks (the same ones `ci.yml` runs):
 
 ```sh
-npm run build -w set-check-frontend
-npm run lint -w set-check-frontend
-npm run test:run -w set-check-frontend
+npm --prefix frontend run build
+npm --prefix frontend run lint
+npm --prefix frontend run test:run
 npm run test:run -w set-check-worker
 npx tsc --noEmit -p worker
 ```
 
-The Playwright e2e tests (`npm run e2e:run -w set-check-frontend`) start the
+The Playwright e2e tests (`npm --prefix frontend run e2e:run`) start the
 Vite dev server themselves. They need the Worker running for the model
 selector to appear.
 
