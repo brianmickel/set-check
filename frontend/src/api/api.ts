@@ -103,7 +103,7 @@ export async function ensureSessionToken(): Promise<string> {
  * Use for all API calls that require auth. Does not parse response; caller handles res.ok and body.
  */
 export async function fetchAuth(url: string, init?: RequestInit): Promise<Response> {
-  const token = await ensureSessionToken();
+  let token = await ensureSessionToken();
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${token}`);
   let res = await fetchWithBackoff(url, { ...init, headers });
