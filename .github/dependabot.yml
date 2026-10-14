@@ -1,43 +1,41 @@
 version: 2
 updates:
-  # Root workspace (backend/ and worker/ resolve through the root package-lock.json)
-  - package-ecosystem: "npm"
-    directory: "/"
+  # Root workspaces: backend/ and worker/ share the root package-lock.json
+  - package-ecosystem: npm
+    directory: /
     schedule:
-      interval: "monthly"
+      interval: monthly
     groups:
       root-deps:
         patterns: ["*"]
+    ignore:
+      # typescript-eslint does not support TypeScript 7 yet
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # tracks the Node major in .nvmrc; bump together with Node
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
-  # frontend/ has its own package-lock.json (CI installs it in isolation)
-  - package-ecosystem: "npm"
-    directory: "/frontend"
+  # frontend/ is a standalone package with its own package-lock.json
+  - package-ecosystem: npm
+    directory: /frontend
     schedule:
-      interval: "monthly"
+      interval: monthly
     groups:
       frontend-deps:
         patterns: ["*"]
+    ignore:
+      # typescript-eslint does not support TypeScript 7 yet
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # tracks the Node major in .nvmrc; bump together with Node
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
-  - package-ecosystem: "npm"
-    directory: "/backend"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "monthly"
-    groups:
-      backend-deps:
-        patterns: ["*"]
-
-  - package-ecosystem: "npm"
-    directory: "/worker"
-    schedule:
-      interval: "monthly"
-    groups:
-      worker-deps:
-        patterns: ["*"]
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
+      interval: monthly
     groups:
       github-actions:
         patterns: ["*"]
