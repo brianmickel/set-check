@@ -76,7 +76,6 @@ export function UploadSection({
   handleOpenAddCard,
   handleCloseAddCardModal,
   handleAddCard,
-  lastAnalyzeProvider: _lastAnalyzeProvider,
   analysisFromCache,
   confirming,
   confirmError,
