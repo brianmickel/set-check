@@ -16,6 +16,6 @@
     "lint:backend": "npm run lint -w set-check-backend"
   },
   "devDependencies": {
-    "wrangler": "^4.151.0"
+    "wrangler": "^4.155.0"
   }
 }
